@@ -29,7 +29,7 @@ Claude Code supports skills through the skill system. Clone this repository to y
 
 ```bash
 # Clone into your Claude Code skills directory
-git clone https://github.com/Origin-Quantum/vqnet2-skill.git ~/.claude/skills/vqnet2-api
+git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git ~/.claude/skills/vqnet2-api
 ```
 
 Or if you already have this repository locally:
@@ -59,8 +59,8 @@ If your AI assistant doesn't have a skill system, you can:
 2. When asking about VQNet, reference the relevant documentation files from `references/` directory
 
 ```bash
-git clone https://github.com/Origin-Quantum/vqnet2-skill.git
-cd vqnet2-skill
+git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git
+cd pyvqnet-skills
 ```
 
 ## Requirements for VQNet Development
