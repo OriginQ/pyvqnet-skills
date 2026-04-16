@@ -1,36 +1,40 @@
 # Quantum Layers API Reference
 
-## QuantumLayer
+> 来源: VQNET2.0-tutorial/source/rst/qnn_pq3.rst + qnn.rst
+> **重要**: 所有示例代码均来自官方文档，可直接运行。
 
-Also aliased as: `QuantumLayerV2`, `QpandaQCircuitVQCLayerLite`
+---
+
+## QuantumLayer (pyqpanda3)
 
 ```python
 pyvqnet.qnn.pq3.quantumlayer.QuantumLayer(
     qprog_with_measure,
     para_num,
-    diff_method: str = "parameter_shift",
-    delta: float = 0.01,
+    diff_method="parameter_shift",
+    delta=0.01,
     dtype=None,
     name=""
 )
 ```
 
-**Description:**
-Variational quantum layer abstraction for PyQPanda3. Simulates a parameterized quantum circuit and returns measurement results. Inherits from VQNet's gradient computation module, supports gradient calculation via parameter-shift or finite-difference methods. Can be used for training variational quantum circuits or embedding quantum circuits into hybrid classical-quantum models.
+**别名**: `QuantumLayerV2`, `QpandaQCircuitVQCLayerLite`
 
-**Parameters:**
-- `qprog_with_measure` - User-defined quantum circuit function that returns measurement result. **MUST** have signature `qprog_with_measure(input, param)` where:
-  - `input` - 1D classical input data, `None` if no input
-  - `param` - 1D array of trainable variational parameters
-  - **MUST** return `np.ndarray` or list of measurement expectation values
-- `para_num` - `int` - Number of trainable parameters
-- `diff_method` - `str` - Gradient calculation method: "parameter_shift" or "finite_diff", default: "parameter_shift"
-- `delta` - `float` - Step size for finite difference gradient, default: 0.01
-- `dtype` - Parameter data type, default: `None` (uses `kfloat32`)
-- `name` - Module name, default: ""
-- **Returns:** Quantum layer module
+**参数**:
+- `qprog_with_measure` - 量子电路函数，**签名必须为 `(input, param)`**
+- `para_num` - 可训练参数个数
+- `diff_method` - 梯度方法: "parameter_shift" 或 "finite_diff"
+- `delta` - 有限差分步长
 
-**Example:**
+**关键签名要求**:
+```python
+def qprog_with_measure(input, param):
+    # input: 一维经典输入数据
+    # param: 一维变分参数
+    # 返回: np.ndarray 或 list（测量结果）
+```
+
+**示例**:
 ```python
 from pyvqnet.qnn.pq3.measure import ProbsMeasure
 from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
@@ -57,25 +61,20 @@ def pqctest(input, param):
 
 pqc = QuantumLayer(pqctest, 3)
 
-# Forward pass
 input = QTensor([[1, 2, 3, 4], [4, 2, 2, 3], [3.0, 3, 2, 2]])
 rlt = pqc(input)
 print(rlt)
 
-# Backward pass
 grad = ones(rlt.data.shape) * 1000
 rlt.backward(grad)
 print(pqc.m_para.grad)
 ```
 
-**Note:**
-- Gradient computation with parameter-shift requires additional pyqpanda3 simulations. Computational complexity scales linearly with `para_num × batch_size × input_dim`.
-
 ---
 
 ## QpandaQProgVQCLayer
 
-Also aliased as: `QuantumLayerV3`
+**别名**: `QuantumLayerV3`
 
 ```python
 pyvqnet.qnn.pq3.quantumlayer.QpandaQProgVQCLayer(
@@ -90,24 +89,14 @@ pyvqnet.qnn.pq3.quantumlayer.QpandaQProgVQCLayer(
 )
 ```
 
-**Description:**
-Submits a parameterized quantum circuit to local PyQPanda3 full-amplitude simulator for computation and trains circuit parameters. Supports batched data and uses parameter-shift rule for gradient estimation. For `CRX`, `CRY`, `CRZ` uses special gradient formulas from https://iopscience.iop.org/article/10.1088/1367-2630/ac2cb3, other gates use default parameter-shift.
+**参数**:
+- `origin_qprog_func` - 返回 `pyqpanda3.core.QProg` 的函数
+- `para_num` - 参数数量
+- `qvm_type` - "cpu" 或 "gpu"
+- `pauli_str_dict` - Pauli 期望字典，如 `{'Z0 X1': 10}`
+- `shots` - 测量次数
 
-**Parameters:**
-- `origin_qprog_func` - Callable function returning `pyqpanda3.core.QProg`. **MUST** have signature `origin_qprog_func(input, param)`:
-  - `input` - 1D classical input data
-  - `param` - 1D array of parameters
-  - **MUST** return `pyqpanda3.core.QProg`
-- `para_num` - `int` - Number of parameters (1D)
-- `qvm_type` - `str` - "cpu" or "gpu", default: "cpu"
-- `pauli_str_dict` - `dict | list` - Dictionary/list of Pauli string expectations, default: `None`
-- `shots` - `int` - Number of measurement shots, default: 1000
-- `initializer` - Parameter initializer function, default: `None`
-- `dtype` - Parameter data type, default: `None`
-- `name` - Module name, default: ""
-- **Returns:** `QuantumLayerV3` instance
-
-**Example:**
+**示例**:
 ```python
 import pyqpanda3.core as pq
 from pyvqnet.qnn.pq3.quantumlayer import QpandaQProgVQCLayer
@@ -148,6 +137,8 @@ print(x.grad.to_numpy())
 
 ## QuantumBatchAsyncQcloudLayer
 
+**真机运行** - 提交量子电路到本源量子云。
+
 ```python
 pyvqnet.qnn.pq3.quantumlayer.QuantumBatchAsyncQcloudLayer(
     origin_qprog_func,
@@ -164,38 +155,20 @@ pyvqnet.qnn.pq3.quantumlayer.QuantumBatchAsyncQcloudLayer(
 )
 ```
 
-**Description:**
-Runs variational quantum circuits on Origin Quantum QCloud real quantum hardware. Submits parameterized circuits asynchronously and obtains measurement results. Supports `random_coordinate_descent` gradient method where only a single random parameter is updated per step (reference: https://arxiv.org/abs/2311.00088).
+**参数**:
+- `qcloud_token` - 从 https://qcloud.originqc.com.cn/ 获取的 API Token
+- `submit_kwargs` - 提交参数，默认: `{"chip_id": "origin_wukong", ...}`
+- `query_kwargs` - 查询参数，默认: `{"timeout": 1, "total_timeout": 60}`
+- 设置 `test_qcloud_fake: True` 使用本地模拟测试
 
-**Parameters:**
-- `origin_qprog_func` - Returns `pyqpanda3.core.QProg`, signature: `origin_qprog_func(input, param)`:
-  - `input` - 1D or 2D classical input (first dimension is batch)
-  - `param` - 1D array of parameters
-  - If `pauli_str_dict` is None, the QProg must contain measurements
-- `qcloud_token` - `str` - API token from https://qcloud.originqc.com.cn/
-- `para_num` - `int` - Number of parameters
-- `pauli_str_dict` - `dict | list` - Pauli expectations, default: `None`. If provided, computes expectation values.
-- `shots` - `int` - Measurement shots, default: 1000
-- `initializer` - Parameter initializer, default: `None` (0~2π normal distribution)
-- `dtype` - Data type, default: `None` (kfloat32)
-- `name` - Module name, default: ""
-- `diff_method` - "parameter_shift" or "random_coordinate_descent", default: "parameter_shift"
-- `submit_kwargs` - Additional kwargs for circuit submission:
-  - Default: `{"chip_id": "origin_wukong", "is_amend": True, "is_mapping": True, "is_optimization": True, "compile_level": 3, "default_task_group_size": 200, "test_qcloud_fake": False}`
-  - Set `test_qcloud_fake: True` to use local CPUQVM simulation for testing
-- `query_kwargs` - Additional kwargs for result querying:
-  - Default: `{"timeout": 1, "total_timeout": 60, "print_query_info": True, "sub_circuits_split_size": 1}`
-  - `total_timeout` - Maximum wait time in seconds (default 60)
-- **Returns:** Quantum layer that runs on QCloud
-
-**Example:**
+**示例**:
 ```python
 import pyqpanda3.core as pq
 from pyvqnet.qnn.pq3.quantumlayer import QuantumBatchAsyncQcloudLayer
 from pyvqnet.tensor import QTensor
 import os
 
-token = os.getenv("ORIGINQC_API_KEY")
+token = os.getenv("QCLOUD_TOKEN")  # 不要硬编码！
 
 def qfun(input, param):
     measure_qubits = [0, 2]
@@ -213,7 +186,7 @@ def qfun(input, param):
 
 layer = QuantumBatchAsyncQcloudLayer(
     qfun, token, 2,
-    submit_kwargs={"test_qcloud_fake": True}  # Fake mode for testing
+    submit_kwargs={"test_qcloud_fake": True}  # 测试模式
 )
 x = QTensor([[0.56, 1.2], [0.56, 1.2]], requires_grad=True)
 y = layer(x)
@@ -222,13 +195,11 @@ print(layer.m_para.grad)
 print(x.grad)
 ```
 
-**Note:**
-- Computational cost scales with `para_num × batch_size × input_dim` due to extra gradient evaluations
-- Default timeout is 60 seconds - increase `total_timeout` in `query_kwargs` if QCloud is busy
-
 ---
 
 ## QuantumLayerAdjoint
+
+使用 adjoint 方法计算梯度。
 
 ```python
 pyvqnet.qnn.pq3.quantumlayer.QuantumLayerAdjoint(
@@ -240,33 +211,16 @@ pyvqnet.qnn.pq3.quantumlayer.QuantumLayerAdjoint(
 )
 ```
 
-**Description:**
-Uses the adjoint method to compute gradients of parameters with respect to Hamiltonian expectation, using PyQPanda3's `VQCircuit` interface. Supports batched input and multiple Hamiltonian outputs.
-
-**Parameters:**
-- `pq3_vqc_circuit` - Custom function that returns a `pyqpanda3.vqcircuit.VQCircuit`. **MUST** have signature `pq3_vqc_circuit(x, param)` where:
-  - `x` - Input (1D array/list)
-  - `param` - Parameters (1D array/list)
-  - User must use `vqc.set_Param()` inside the function
-- `param_num` - `int` - Number of parameters
-- `pauli_dicts` - Expected observables, can be a list of dictionaries
-- `dtype` - Parameter data type (kfloat32 or kfloat64), default: `None` (kfloat32)
-- `name` - Interface name
-- **Returns:** `QuantumLayerAdjoint` instance
-
-**Notes:**
-- You MUST use gates from the `VQCircuit` interface to build your circuit
-- Only a limited set of gates are currently supported. Unsupported gates will throw an exception.
-
-**Example:**
+**示例**:
 ```python
 from pyvqnet.qnn.pq3 import QuantumLayerAdjoint
-from pyvqnet.tensor import randn
+from pyvqnet import tensor
 from pyqpanda3.vqcircuit import VQCircuit
 import pyqpanda3 as pq3
 
 l = 3
 n = 7
+
 def pqctest(x, param):
     vqc = VQCircuit()
     vqc.set_Param([len(param) + len(x)])
@@ -286,7 +240,7 @@ Xn_string = ' '.join([f'X{i}' for i in range(n)])
 pauli_dict = {Xn_string: 1.}
 
 layer = QuantumLayerAdjoint(pqctest, 3 * l * n, pauli_dict)
-x = randn([2, 5])
+x = tensor.randn([2, 5])
 x.requires_grad = True
 y = layer(x)
 y.backward()
@@ -296,47 +250,146 @@ print(x.grad)
 
 ---
 
-## grad
+## QLinear (量子全连接)
 
 ```python
-pyvqnet.qnn.pq3.quantumlayer.grad(
-    quantum_prog_func,
-    input_params,
-    *args
+pyvqnet.qnn.qlinear.QLinear(input_channels, output_channels, machine="CPU")
+```
+
+**示例**:
+```python
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.qlinear import QLinear
+
+params = [[0.37454012, 0.95071431, 0.73199394, 0.59865848, 0.15601864, 0.15599452],
+          [1.37454012, 0.95071431, 0.73199394, 0.59865848, 0.15601864, 0.15599452],
+          [1.37454012, 1.95071431, 0.73199394, 0.59865848, 0.15601864, 0.15599452],
+          [1.37454012, 1.95071431, 1.73199394, 1.59865848, 0.15601864, 0.15599452]]
+
+m = QLinear(6, 2)
+input = QTensor(params, requires_grad=True)
+output = m(input)
+output.backward()
+print(output)
+```
+
+---
+
+## QConv (量子卷积)
+
+```python
+pyvqnet.qnn.qcnn.qconv.QConv(
+    input_channels,
+    output_channels,
+    quantum_number,
+    stride=(1, 1),
+    padding=(0, 0),
+    kernel_initializer=normal,
+    machine="CPU",
+    dtype=None,
+    name=""
 )
 ```
 
-**Description:**
-Computes gradients for user-defined parameterized quantum circuits using the parameter-shift method.
-
-**Parameters:**
-- `quantum_prog_func` - User's quantum circuit function that computes expectation
-- `input_params` - Coordinates of parameters for which to compute gradient
-- `*args` - Additional arguments passed to `quantum_prog_func`
-- **Returns:** Gradient array with shape `[num_of_parameters, num_of_output]`
-
-**Example:**
+**示例**:
 ```python
-from pyvqnet.qnn.pq3 import grad, ProbsMeasure
+from pyvqnet.tensor import tensor
+from pyvqnet.qnn.qcnn.qconv import QConv
+
+x = tensor.ones([1, 3, 4, 4])
+layer = QConv(input_channels=3, output_channels=2, quantum_number=4, stride=(2, 2))
+y = layer(x)
+print(y)
+```
+
+---
+
+## 测量函数
+
+### ProbsMeasure
+概率测量。
+
+```python
+from pyvqnet.qnn.pq3.measure import ProbsMeasure
+
+ProbsMeasure(machine, prog, measure_qubits)
+```
+
+### expval
+Pauli 期望值测量。
+
+```python
+from pyvqnet.qnn.pq3 import expval
+
+expval(machine, prog, pauli_str_dict)
+```
+
+---
+
+## 量子门模板
+
+### AmplitudeEmbeddingCircuit
+振幅编码。
+
+```python
+from pyvqnet.qnn.pq3.template import AmplitudeEmbeddingCircuit
+import numpy as np
 import pyqpanda3.core as pq
 
-def pqctest(param):
-    machine = pq.CPUQVM()
-    qubits = range(2)
-    circuit = pq.QCircuit(2)
-
-    circuit << pq.RX(qubits[0], param[0])
-    circuit << pq.RY(qubits[1], param[1])
-    circuit << pq.CNOT(qubits[0], qubits[1])
-    circuit << pq.RX(qubits[1], param[2])
-
-    prog = pq.QProg()
-    prog << circuit
-    EXP = ProbsMeasure(machine, prog, [1])
-    return EXP
-
-g = grad(pqctest, [0.1, 0.2, 0.3])
-print(g)
-exp = pqctest([0.1, 0.2, 0.3])
-print(exp)
+input_feat = np.array([2.2, 1, 4.5, 3.7])
+qlist = range(3)
+cir = AmplitudeEmbeddingCircuit(input_feat, qlist)
 ```
+
+### AngleEmbeddingCircuit
+角度编码。
+
+```python
+from pyvqnet.qnn.pq3.template import AngleEmbeddingCircuit
+import numpy as np
+
+m_qlist = range(2)
+input_feat = np.array([2.2, 1])
+C = AngleEmbeddingCircuit(input_feat, m_qlist, 'X')
+```
+
+### RotCircuit
+任意单量子比特旋转。
+
+```python
+from pyvqnet.qnn.pq3.template import RotCircuit
+from pyvqnet import tensor
+
+param = tensor.QTensor([3, 4, 5])
+c = RotCircuit(param, 1)
+```
+
+### HardwareEfficientAnsatz
+硬件高效 ansatz。
+
+```python
+from pyvqnet.qnn.pq3.ansatz import HardwareEfficientAnsatz
+
+hea = HardwareEfficientAnsatz(
+    qubits=range(4),
+    single_rot_gate_list=["RX", "RY", "RZ"],
+    entangle_gate="CNOT",
+    entangle_rules="linear",
+    depth=2
+)
+cir = hea.create_ansitz()
+```
+
+---
+
+## 常见问题
+
+1. **参数顺序错误**: 函数签名必须是 `(input, param)`，不是 `(param, input)`
+2. **忘记返回测量结果**: 函数必须返回 `np.ndarray` 或 `list`
+3. **QCloud Token**: 使用 `os.getenv("QCLOUD_TOKEN")`，不要硬编码
+4. **梯度计算开销**: parameter-shift 需要额外运行 `para_num × batch_size × input_dim` 次电路
+
+---
+
+**Version**: VQNet 2.0
+**Source**: VQNET2.0-tutorial/source/rst/qnn_pq3.rst

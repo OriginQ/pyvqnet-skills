@@ -9,6 +9,7 @@ from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
 from pyvqnet.qnn.pq3.measure import ProbsMeasure
 from pyvqnet.nn import Linear, ReLU, Sequential, CrossEntropyLoss
 from pyvqnet.tensor import QTensor
+from pyvqnet import kint64
 from pyvqnet.optim import Adam
 from pyvqnet.utils import set_random_seed
 
@@ -71,9 +72,9 @@ print(f"Input shape: {batch_x.shape}")
 
 optimizer.zero_grad()
 output = model(batch_x)
-loss = loss_fn(output, batch_y)
+loss = loss_fn(batch_y, output)  # VQNet: (label, prediction)
 loss.backward()
-optimizer.step()
+optimizer._step()  # VQNet uses _step()
 
 print(f"Output logits:\n{output}")
 print()

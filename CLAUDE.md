@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.0 with pyqpanda3. Provides complete API reference extracted from official documentation and helps with code generation, debugging, and best practices.
+**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.0 (PyVQNet) with pyqpanda3. Provides complete API reference extracted from official documentation.
 
 **Primary Framework**: VQNet 2.0 (PyVQNet) with pyqpanda3 for quantum computing.
 
@@ -10,166 +10,168 @@
 
 **License**: Apache 2.0
 
+---
+
+## Critical Rule: Always Read Reference Files
+
+**IMPORTANT**: This Skill enforces a strict rule to prevent API hallucination:
+
+> When providing VQNet code examples, you MUST first read the corresponding `references/*.md` file. **Never write VQNet API code from memory.**
+
+### Why This Rule Exists
+- VQNet API signatures are unique (e.g., `(input, param)` not `(param, input)`)
+- dtype requirements differ from PyTorch (e.g., labels need `kint64`)
+- Loss function order is reversed: `loss_fn(y_true, y_pred)` not `(y_pred, y_true)`
+- VQC module requires `reset_states(batchsize)` per forward call
+
+---
+
 ## When to Use This Skill
 
-Use this skill when:
-- User asks about VQNet API or QTensor
-- User needs to create a quantum neural network
-- User wants to implement variational quantum circuits (VQC)
-- User needs help with PyTorch backend integration
-- User asks about quantum convolution or quantum fully-connected layers
-- User needs help debugging VQNet code
+Use this skill when user mentions:
+- VQNet, pyvqnet, QTensor
+- QuantumLayer, VQC, pyqpanda3
+- Quantum neural networks, variational quantum circuits
+- Quantum machine learning, QVC, VSQL, Quanvolution
+- Hybrid quantum-classical models
+- GPU training with VQNet
+- Distributed quantum ML training
 
-## Key Files to Reference
+---
 
-| Topic | Reference File |
-|-------|----------------|
-| QTensor tensor class | `references/qtensor.md` |
-| Quantum layers (QuantumLayer, etc.) | `references/quantum_layers.md` |
-| Circuit templates & gate functions | `references/quantum_templates.md` |
-| Measurement functions | `references/measurement.md` |
-| Classical/quantum hybrid NN layers (QLinear, QConv) | `references/classic_nn.md` |
-| PyTorch backend integration | `references/torch_api.md` |
-| Utility functions | `references/utils.md` |
-| Variational quantum circuits | `references/vqc.md` |
-| Quantum neural networks | `references/qnn.md` |
+## Reference Files Index
 
-## Architecture Overview
+| 需求 | 读取文件 |
+|------|----------|
+| 安装/环境/FAQ | `references/install_env.md` |
+| QTensor API | `references/qtensor.md` |
+| 经典神经网络 (Module, Linear, Conv, Loss, Optimizer) | `references/classic_nn.md` |
+| QuantumLayer (pyqpanda3) | `references/quantum_layers.md` |
+| VQC 自动微分模块 | `references/vqc.md` |
+| QML Demo 示例 | `references/qml_demos.md` |
+| 分布式训练 | `references/distributed.md` |
+| 量子大模型微调 | `references/quantum_llm.md` |
+
+---
+
+## Project Structure
 
 ```
 vqnet2-skill/
-├── SKILL.md                      # Core skill definition with workflow
+├── SKILL.md                      # Core skill definition (分层体系)
 ├── CLAUDE.md                     # This file - AI assistant guide
 ├── README.md                     # Human-readable README
-├── examples/                     # Executable example scripts
-│   ├── 01-qtensor-basics.py     # QTensor creation and operations
-│   ├── 02-quantum-layer.py       # Basic QuantumLayer example
-│   ├── 03-qnn-classification.py  # Quantum neural network classification
-│   └── 04-pytorch-backend.py     # PyTorch backend integration example
 └── references/                   # API reference documentation
-    ├── qtensor.md               # QTensor API
-    ├── quantum_layers.md        # Quantum layer classes
-    ├── quantum_templates.md     # Circuit templates and gates
-    ├── measurement.md           # Measurement and entropy functions
-    ├── classic_nn.md            # QLinear, QConv
-    ├── torch_api.md            # PyTorch backend
-    ├── utils.md                # Utility functions
-    ├── vqc.md                  # Variational quantum circuits
-    └── qnn.md                  # Quantum neural networks
+    ├── install_env.md           # 安装、环境配置、FAQ
+    ├── qtensor.md               # QTensor 完整 API
+    ├── classic_nn.md            # Module, Linear, Conv2D, Loss, Optimizer
+    ├── quantum_layers.md        # QuantumLayer, QpandaQProgVQCLayer
+    ├── vqc.md                   # VQC 自动微分 API
+    ├── qml_demos.md             # QVC, QDRL, Quanvolution 示例
+    ├── distributed.md           # MPI/NCCL 分布式训练
+    └── quantum_llm.md           # 量子大模型微调
 ```
 
 ---
 
-## Critical API Patterns to Remember
+## Critical API Patterns
 
-### QTensor Key Points
+### 1. QuantumLayer 函数签名
 
 ```python
-from pyvqnet.tensor import QTensor
-from pyvqnet.dtype import *
-
-# Constructor: QTensor(data, requires_grad=False, device=DEV_CPU, dtype=None)
-t = QTensor([1.0, 2.0, 3.0], requires_grad=True)
-
-# Common attributes/methods:
-t.shape        # list of dimensions
-t.ndim         # number of dimensions
-t.size         # number of elements
-t.dtype        # data type (kfloat32, kfloat64, etc.)
-t.requires_grad # whether gradients are tracked
-t.grad         # gradient after backward()
-t.zero_grad()  # zero out gradients
-t.backward()   # compute gradients via backprop
-t.to_numpy()   # convert to numpy array
-t.numel()      # number of elements (same as size)
+def circuit(input, param):  # 必须是 input 在前！
+    # input: 经典输入数据
+    # param: 变分参数
+    return measurement_result  # np.ndarray 或 list
 ```
 
-### QuantumLayer Signatures
+**常见错误**: 写成 `def circuit(param, input)` 会导致运行失败。
 
-**QuantumLayer** (most common):
+### 2. VQC 模块 reset_states
+
 ```python
-QuantumLayer(qprog_with_measure, para_num, diff_method="parameter_shift",
-             delta=0.01, dtype=None, name="")
+from pyvqnet.qnn.vqc import QMachine, RZ, Probability
+
+class QModel(Module):
+    def forward(self, x):
+        # 必须在 forward 开头调用！
+        self.device.reset_states(x.shape[0])
+        ...
 ```
-- `qprog_with_measure` must be a function `def func(input, param): ...`
-- Function signature: **input first, then param** (this is easy to get wrong)
-- Function must return measurement result (np.ndarray or list)
 
-**QpandaQProgVQCLayer** (alias: QuantumLayerV3):
+### 3. 损失函数参数顺序
+
 ```python
-QpandaQProgVQCLayer(origin_qprog_func, para_num, qvm_type="cpu",
-                    pauli_str_dict=None, shots=1000,
-                    initializer=None, dtype=None, name="")
+loss_fn(y_true, y_pred)  # VQNet: 标签在前
+loss_fn(y_pred, y_true)  # PyTorch: 预测在前
 ```
-- `origin_qprog_func` must return `pyqpanda3.core.QProg`
-- Same function signature requirement: `(input, param)`
 
-**QuantumBatchAsyncQcloudLayer**:
-For running on Origin Quantum QCloud real hardware. Requires API token.
+### 4. dtype 要求
 
-**QuantumLayerAdjoint**:
-Uses adjoint method for gradients with pyqpanda3 VQCircuit.
-
-### Measurement Functions
+| 用途 | dtype |
+|------|-------|
+| Embedding 输入 | `kint64` |
+| CrossEntropyLoss 标签 | `kint64` |
+| 普通张量 | `kfloat32`（默认） |
 
 ```python
-from pyvqnet.qnn.pq3.measure import expval, ProbsMeasure, QuantumMeasure
-
-# Expectation value of Pauli string
-expval(machine, prog, pauli_str_dict)  # -> float
-
-# Probability measurement
-ProbsMeasure(machine, prog, measure_qubits, shots=1)  # -> np.array
-
-# Full quantum measurement with shots
-QuantumMeasure(machine, prog, measure_qubits, shots=1000)  # -> dict
+from pyvqnet import kint64
+labels = QTensor([0, 1, 2], dtype=kint64)
 ```
 
 ---
 
 ## Common Mistakes to Watch For
 
-1. **Wrong parameter order** in quantum circuit function:
-   - CORRECT: `def circuit(input, param): ...`
-   - WRONG: `def circuit(param, input): ...`
-
-2. **Mixing backends**: QTensor from different backends can't be mixed. If user switches backend, they need to recreate tensors.
-
-3. **Forgetting requires_grad**: Trainable parameters must have `requires_grad=True`.
-
-4. **Wrong import paths**: Make sure to use correct module paths:
-   - `pyvqnet.qnn.pq3.quantumlayer` for quantum layers
-   - `pyvqnet.qnn.pq3.measure` for measurement
-   - `pyvqnet.qnn.pq3.template` for templates
-   - `pyvqnet.tensor` for QTensor
-
-5. **QCloud token**: Never hardcode the token in example code - use `os.getenv("QCLOUD_TOKEN")`.
+1. **参数顺序错误**: QuantumLayer 函数签名必须是 `(input, param)`
+2. **忘记 reset_states**: VQC 模型每次 forward 必须调用
+3. **dtype 错误**: CrossEntropy 标签必须是 `kint64`
+4. **ModuleList vs list**: 子模块必须用 `ModuleList`
+5. **QCloud Token**: 使用 `os.getenv("QCLOUD_TOKEN")`，不要硬编码
+6. **混合后端**: 不同 backend 的 QTensor 不能混用
+7. **GPU 训练**: 数据和模型都要移动到 GPU
 
 ---
 
 ## Dependencies
 
-Users need to install:
 ```bash
 pip install pyvqnet
 pip install pyqpanda3
-# Optional for PyTorch backend:
-pip install torch>=2.4.0,<2.7.0
+# Optional:
+pip install torch>=2.4.0,<2.7.0  # PyTorch backend
+conda install conda-forge::mpich-mpicxx==4.1.2  # 分布式 CPU
+pip install mpi4py  # 分布式 CPU
 ```
 
 ---
 
 ## Verification Checklist
 
-When generating VQNet code:
+Before generating VQNet code:
 
-- [ ] Correct import paths for all modules
-- [ ] Quantum circuit function has correct signature `(input, param)`
-- [ ] QTensor created with correct `requires_grad` setting
-- [ ] Backend selection is clear if using non-default
-- [ ] Example includes complete imports and can run standalone
-- [ ] No hardcoded QCloud API tokens
-- [ ] Parameter order matches API documentation
+- [ ] 已读取对应的 references/*.md 文件
+- [ ] QuantumLayer 函数签名 `(input, param)`
+- [ ] VQC forward 开头调用 `reset_states(batchsize)`
+- [ ] 损失函数 `(y_true, y_pred)` 顺序正确
+- [ ] 标签 dtype 为 `kint64`
+- [ ] 子模块使用 `ModuleList`
+- [ ] 无硬编码 QCloud Token
+- [ ] GPU 模型和数据都移动到 GPU
+
+---
+
+## Example: Quick Reference Lookup
+
+```
+User: "How to use QuantumLayer with pyqpanda3?"
+
+AI Response Flow:
+1. Read `references/quantum_layers.md`
+2. Extract the example code
+3. Verify function signature is (input, param)
+4. Present code with import paths
+```
 
 ---
 
@@ -178,3 +180,4 @@ When generating VQNet code:
 - [Official VQNet Documentation](https://vqnet2-tutorial.readthedocs.io/)
 - [Origin Quantum](https://www.originqc.com.cn/)
 - [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/qpanda-3/index.html)
+- [Origin Quantum Cloud](https://qcloud.originqc.com.cn/)

@@ -8,215 +8,187 @@ This skill provides AI assistants (Claude, Cline, etc.) with complete API refere
 
 - **API lookup** - Quick access to function signatures, parameters, and examples
 - **Code generation** - Generate correct VQNet code following official patterns
-- **Debugging** - Identify common mistakes (wrong parameter order, backend mixing, etc.)
+- **Debugging** - Identify common mistakes (wrong parameter order, dtype errors, etc.)
 - **Best practices** - Follow the official documentation conventions
 
 ## Supported APIs
 
-- **QTensor** - Core tensor with automatic differentiation
-- **Quantum Layers** - `QuantumLayer`, `QpandaQProgVQCLayer`, `QuantumBatchAsyncQcloudLayer`, `QuantumLayerAdjoint`
-- **Circuit Templates** - AmplitudeEmbedding, AngleEmbedding, IQPEmbedding, HardwareEfficientAnsatz, and more
-- **Measurement** - `expval`, `ProbsMeasure`, `QuantumMeasure`, entropy, purity, mutual information
-- **Hybrid Neural Networks** - `QLinear` (quantum fully-connected), `QConv` (quantum convolution)
-- **PyTorch Integration** - Backend switching, mixed PyTorch/VQNet development
-- **Utilities** - Random seeds, parameter initializers
+| Category | Key APIs |
+|----------|----------|
+| **QTensor** | Core tensor with automatic differentiation, GPU support |
+| **Classical NN** | Module, Linear, Conv2D, BatchNorm, LSTM, Loss, Optimizer |
+| **QuantumLayer (pyqpanda3)** | QuantumLayer, QuantumBatchAsyncQcloudLayer, QuantumLayerAdjoint |
+| **VQC Autograd** | QMachine, Hadamard/RX/RY/RZ/CNOT, Probability, reset_states |
+| **Hybrid Layers** | QLinear (quantum FC), QConv (quantum convolution) |
+| **Templates** | HardwareEfficientAnsatz, AmplitudeEmbedding, AngleEmbedding |
+| **Distributed** | MPI/NCCL multi-GPU training (Linux only) |
+| **Quantum LLM** | Fine-tuning with quantum circuits via quantum-llm |
 
 ## Installation
 
 ### For Claude Code (Claude CLI)
-
-Claude Code supports skills through the skill system. Clone this repository to your skills directory:
 
 ```bash
 # Clone into your Claude Code skills directory
 git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git ~/.claude/skills/vqnet2-api
 ```
 
-Or if you already have this repository locally:
-
-```bash
-# Copy/move to your Claude Code skills folder
-mkdir -p ~/.claude/skills
-cp -r /path/to/vqnet2-skill ~/.claude/skills/vqnet2-api
-```
-
 ### For VS Code Cline / Roo Code
 
-Cline supports custom instructions and external skill packages. Add this repository as a skill package:
-
-1. In VS Code, open Cline settings
+1. Open Cline settings
 2. Find "Custom Instructions" or "Skill Packages" section
-3. Add the path to this cloned repository:
-   ```
-   /path/to/vqnet2-skill
-   ```
+3. Add the path to this repository
 
-### Manual Installation (Any AI Assistant)
-
-If your AI assistant doesn't have a skill system, you can:
-
-1. Clone this repository
-2. When asking about VQNet, reference the relevant documentation files from `references/` directory
+### Requirements for VQNet Development
 
 ```bash
-git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git
-cd pyvqnet-skills
-```
-
-## Requirements for VQNet Development
-
-To use VQNet 2.0 in your own code, you need to install the Python packages:
-
-```bash
-# Install VQNet 2.0 and PyQPanda3
 pip install pyvqnet
 pip install pyqpanda3
 
-# Optional: For PyTorch backend integration
-pip install torch>=2.4.0,<2.7.0
+# Optional:
+pip install torch>=2.4.0,<2.7.0     # PyTorch backend
+conda install conda-forge::mpich-mpicxx==4.1.2  # Distributed CPU
+pip install mpi4py                  # Distributed CPU
 ```
 
 ## Usage
 
 ### Automatic Triggering
 
-This skill **automatically triggers** when you mention:
-- VQNet, VQNet2, PyVQNet
-- QTensor
-- Variational quantum circuit / VQC / 变分量子线路
-- Quantum neural network / QNN / 量子神经网络
-- Quantum machine learning / QML / 量子机器学习
-- QLinear, QConv, quantum convolution
-- pyqpanda3
+This skill triggers when you mention:
+- VQNet, pyvqnet, QTensor
+- QuantumLayer, VQC, pyqpanda3
+- Quantum neural networks, variational quantum circuits
+- Quantum machine learning, QVC, VSQL, Quanvolution
 
-### What the Skill Provides
-
-1. **Complete API Reference** - All function signatures from official documentation
-2. **Correct Parameter Order** - Avoids common mistakes like `(input, param)` vs `(param, input)`
-3. **Backend Awareness** - Knows the differences between `pyvqnet-ad`, `pyvqnet`, and `torch` backends
-4. **Working Examples** - Generates complete, runnable code examples
-5. **Debugging Help** - Identifies common mistakes like backend mixing, missing `requires_grad`, etc.
-
-### Example Workflow
-
-1. You: "Help me create a 4-qubit variational quantum classifier using VQNet"
-2. Skill: Automatically loads the relevant API references
-3. Skill: Generates complete working code with correct imports and parameter order
-4. You get code that follows official VQNet 2.0 conventions
-
-## Example Usage
-
-### Creating a QTensor
-
-```python
-from pyvqnet.tensor import QTensor
-from pyvqnet.dtype import *
-
-# Create tensor with gradient tracking
-t = QTensor([[1.0, 2.0], [3.0, 4.0]], requires_grad=True, dtype=kfloat32)
-
-print(t.shape)  # [2, 2]
-print(t.ndim)   # 2
-```
-
-### Creating a Quantum Layer
+### Example: QuantumLayer
 
 ```python
 from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
 from pyvqnet.qnn.pq3.measure import ProbsMeasure
-from pyvqnet.tensor import QTensor
 import pyqpanda3.core as pq
 
-def quantum_circuit(input, params):
-    n_qubits = 4
+def circuit(input, param):  # 注意：input 在前，param 在后
     machine = pq.CPUQVM()
-    qubits = range(n_qubits)
+    qubits = range(4)
     cir = pq.QCircuit()
 
-    # Encode input data
     for q, x in zip(qubits, input):
         cir << pq.H(q) << pq.RZ(q, x)
 
-    # Variational entanglement
-    for i in range(n_qubits - 1):
-        cir << pq.CNOT(i, i + 1) << pq.RY(i + 1, params[i])
+    for i in range(3):
+        cir << pq.CNOT(i, i + 1) << pq.RY(i + 1, param[i])
 
     prog = pq.QProg()
     prog << cir
     return ProbsMeasure(machine, prog, list(qubits))
 
-# Create layer with 3 variational parameters
-layer = QuantumLayer(quantum_circuit, 3)
-
-# Forward pass
-data = QTensor([[0.1, 0.2, 0.3, 0.4]])
-output = layer(data)
-print(output)
-
-# Backward pass
-output.backward()
-print(layer.m_para.grad)
+layer = QuantumLayer(circuit, 3)  # 3 个可训练参数
 ```
 
-### Switching to PyTorch Backend
+### Example: VQC Autograd Module
 
 ```python
-import pyvqnet
-import torch
-from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc import QMachine, RZ, Probability
+from pyvqnet.nn import Module, Linear
 
-# Switch to PyTorch backend
-pyvqnet.backends.set_backend("torch")
+class QModel(Module):
+    def __init__(self):
+        super().__init__()
+        self.linear = Linear(4, 2)
+        self.encode = RZ(wires=0)
+        self.device = QMachine(4)
 
-# QTensor now wraps torch.Tensor
-t = QTensor([1.0, 2.0, 3.0], requires_grad=True)
-print(type(t.data))  # <class 'torch.Tensor'>
+    def forward(self, x):
+        # 必须在 forward 开头调用！
+        self.device.reset_states(x.shape[0])
+        y = self.linear(x)
+        self.encode(params=y[:, 0], q_machine=self.device)
+        return Probability(wires=[0])(q_machine=self.device)
 ```
 
-## Skill Structure
+### Example: Complete Training
+
+```python
+from pyvqnet.nn import Module, Linear, CrossEntropyLoss
+from pyvqnet.optim import Adam
+from pyvqnet.tensor import QTensor
+from pyvqnet import kint64
+
+model = Linear(10, 5)
+optimizer = Adam(model.parameters(), lr=0.01)
+loss_fn = CrossEntropyLoss()
+
+x = QTensor([[0.1, ...]], requires_grad=True)
+y = QTensor([0], dtype=kint64)  # 标签必须是 kint64
+
+pred = model(x)
+loss = loss_fn(y, pred)  # 注意：VQNet 是 (标签, 预测值)
+
+optimizer.zero_grad()
+loss.backward()
+optimizer._step()  # 注意：是 _step() 而非 step()
+```
+
+## Critical API Patterns
+
+| Pattern | VQNet | PyTorch (对比) |
+|---------|--------|----------------|
+| QuantumLayer 签名 | `(input, param)` | - |
+| 损失函数参数 | `(y_true, y_pred)` | `(y_pred, y_true)` |
+| CrossEntropy 标签 dtype | `kint64` | `torch.long` |
+| 优化器更新 | `optimizer._step()` | `optimizer.step()` |
+| VQC forward | 必须调用 `reset_states(batchsize)` | - |
+
+## Project Structure
 
 ```
 vqnet2-skill/
-├── SKILL.md                      # Core skill definition for AI assistant
-├── CLAUDE.md                     # Assistant guide (this project)
-├── README.md                     # This file - installation guide
+├── SKILL.md                      # Core skill - 12-layer skill system
+├── CLAUDE.md                     # AI assistant guide
+├── README.md                     # This file
 ├── examples/                     # Working example scripts
-│   ├── 01-qtensor-basics.py     # QTensor creation and operations
-│   ├── 02-quantum-layer.py       # Basic QuantumLayer example
-│   ├── 03-qnn-classification.py  # Quantum neural network classification
-│   └── 04-pytorch-backend.py     # PyTorch backend integration
-└── references/                   # API reference documentation
-    ├── qtensor.md               # QTensor class API
-    ├── quantum_layers.md        # Quantum layer classes
-    ├── quantum_templates.md     # Circuit templates and gates
-    ├── measurement.md           # Measurement functions
-    ├── classic_nn.md            # Hybrid layers (QLinear, QConv)
-    ├── torch_api.md            # PyTorch backend API
-    ├── utils.md                # Utility functions
-    ├── vqc.md                  # Variational quantum circuits
-    └── qnn.md                  # Quantum neural networks
+│   ├── 01-qtensor-basics.py
+│   ├── 02-quantum-layer.py
+│   ├── 03-qnn-classification.py
+│   ├── 04-pytorch-backend.py
+│   ├── 05-vqc-autograd.py        # VQC reset_states 示例
+│   ├── 06-gpu-training.py        # GPU toGPU() 示例
+│   └── 07-complete-training.py   # 完整训练循环
+└── references/                   # API reference (from official RST)
+    ├── install_env.md            # 安装 + FAQ
+    ├── qtensor.md                # QTensor API
+    ├── classic_nn.md             # Module, Linear, Conv, Loss, Optimizer
+    ├── quantum_layers.md         # QuantumLayer, QcloudLayer
+    ├── vqc.md                    # VQC autograd module
+    ├── qml_demos.md              # QVC, QDRL, Quanvolution
+    ├── distributed.md            # MPI/NCCL distributed
+    └── quantum_llm.md            # Quantum LLM fine-tuning
 ```
 
-## Common Mistakes this Skill Helps Prevent
+## Common Mistakes Prevented
 
-| Mistake | How the Skill Helps |
-|---------|-------------------|
-| Wrong parameter order in quantum circuit function (`(param, input)`) | Ensures `(input, param)` which matches VQNet API |
-| Incorrect import paths | Always uses the correct module paths like `pyvqnet.qnn.pq3.quantumlayer` |
-| Mixing tensors from different backends | Reminds users to switch backend before creating tensors |
-| Forgetting `requires_grad=True` for trainable parameters | Ensures gradients are tracked for training |
-| Hardcoding QCloud API tokens | Enforces using environment variables |
+| Mistake | Fix |
+|---------|-----|
+| `def circuit(param, input)` | Use `(input, param)` |
+| `loss_fn(pred, y)` | Use `loss_fn(y, pred)` |
+| Labels as `kfloat32` | Use `kint64` for CrossEntropy |
+| `optimizer.step()` | Use `optimizer._step()` |
+| Missing `reset_states` | Call `device.reset_states(batchsize)` in forward |
+| Python `list` for submodules | Use `ModuleList` |
+| Hardcoded QCloud token | Use `os.getenv("QCLOUD_TOKEN")` |
 
 ## Links
 
 - [Official VQNet Documentation](https://vqnet2-tutorial.readthedocs.io/)
-- [Origin Quantum Website](https://www.originqc.com.cn/)
+- [Origin Quantum](https://www.originqc.com.cn/)
 - [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/qpanda-3/index.html)
+- [Origin Quantum Cloud](https://qcloud.originqc.com.cn/)
 
 ## License
 
-Apache License 2.0 - same as VQNet documentation.
+Apache License 2.0
 
 ## Credits
 
-This skill is based on the official VQNet 2.0 documentation from Origin Quantum.
+Based on official VQNet 2.0 documentation from Origin Quantum.
