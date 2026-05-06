@@ -29,8 +29,11 @@ This skill provides AI assistants (Claude, Cline, etc.) with complete API refere
 ### For Claude Code (Claude CLI)
 
 ```bash
-# Clone into your Claude Code skills directory
-git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git ~/.claude/skills/vqnet2-api
+# Clone the repository
+git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git
+
+# Copy to Claude Code skills directory
+cp -r pyvqnet-skills ~/.claude/skills/vqnet2-api
 ```
 
 ### For VS Code Cline / Roo Code
