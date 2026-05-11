@@ -329,7 +329,7 @@ expval(machine, prog, pauli_str_dict)
 ## 量子门模板
 
 ### AmplitudeEmbeddingCircuit
-振幅编码。
+振幅编码。**输入特征必须手动归一化（L2 norm = 1）**，否则不是合法量子态。`n` 个量子比特编码 `2^n` 个特征。
 
 ```python
 from pyvqnet.qnn.pq3.template import AmplitudeEmbeddingCircuit
@@ -337,7 +337,10 @@ import numpy as np
 import pyqpanda3.core as pq
 
 input_feat = np.array([2.2, 1, 4.5, 3.7])
-qlist = range(3)
+# 必须手动归一化！L2 norm 必须为 1
+input_feat = input_feat / np.linalg.norm(input_feat)
+# 4 个特征 → 2 个量子比特 (2^2 = 4)
+qlist = range(2)
 cir = AmplitudeEmbeddingCircuit(input_feat, qlist)
 ```
 
@@ -369,6 +372,7 @@ c = RotCircuit(param, 1)
 
 ```python
 from pyvqnet.qnn.pq3.ansatz import HardwareEfficientAnsatz
+from pyvqnet.tensor import tensor
 
 hea = HardwareEfficientAnsatz(
     qubits=range(4),
@@ -377,7 +381,11 @@ hea = HardwareEfficientAnsatz(
     entangle_rules="linear",
     depth=2
 )
-cir = hea.create_ansitz()
+# get_para_num() 获取所需参数总数
+para_count = hea.get_para_num()
+# create_ansatz(params) 需传入参数张量，形状 [para_count]
+params = tensor.ones([para_count])
+cir = hea.create_ansatz(params)
 ```
 
 ---
@@ -388,6 +396,8 @@ cir = hea.create_ansitz()
 2. **忘记返回测量结果**: 函数必须返回 `np.ndarray` 或 `list`
 3. **QCloud Token**: 使用 `os.getenv("QCLOUD_TOKEN")`，不要硬编码
 4. **梯度计算开销**: parameter-shift 需要额外运行 `para_num × batch_size × input_dim` 次电路
+5. **AmplitudeEmbedding 未归一化**: 输入特征必须手动归一化 (`x / np.linalg.norm(x)`), L2 norm 必须为 1; 特征数必须 ≤ 2^n_qubits
+6. **HardwareEfficientAnsatz 参数遗漏**: 必须调用 `get_para_num()` 获取参数总数, 再用 `create_ansatz(params)` 传入参数张量; 不能调用无参的 `create_ansitz()`
 
 ---
 

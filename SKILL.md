@@ -124,7 +124,7 @@ x = randn([32, 4])
 y = randn([32, 1])
 
 pred = model(x)
-loss = loss_fn(pred, y)
+loss = loss_fn(y, pred)  # 注意: (标签, 预测值)
 optimizer.zero_grad()
 loss.backward()
 optimizer._step()
@@ -406,6 +406,9 @@ layer = QuantumBatchAsyncQcloudLayer(
 5. **ModuleList vs List**: 子模块列表要用 `ModuleList`，不能用 Python `list`
 6. **dtype 错误**: Embedding 输入需 `kint64`，交叉熵标签需 `kint64`
 7. **硬编码 Token**: QCloud Token 必须用环境变量
+8. **AmplitudeEmbedding 未归一化**: 输入特征必须手动调用 `x / np.linalg.norm(x)` 归一化, L2 norm 必须为 1
+9. **HardwareEfficientAnsatz 参数遗漏**: pyqpanda3 版本必须使用 `get_para_num()` + `create_ansatz(params)` 组合, 不能调用无参方法
+10. **损失函数参数顺序**: VQNet 损失函数 `loss_fn(label, pred)` — 标签在前，预测值在后（与 PyTorch 相反）
 
 ### GPU 训练要点
 

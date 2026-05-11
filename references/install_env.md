@@ -263,7 +263,7 @@ def qdrl_circuit(input, weights):
 class Model(Module):
     def __init__(self):
         super().__init__()
-        self.pqc = QuantumLayer(qdrl_circuit, 9)
+        self.pqc = QuantumLayer(qdrl_circuit, 3)  # 3个可训练参数: param1[0], param1[1], param1[2]
 
     def forward(self, x):
         return self.pqc(x)
