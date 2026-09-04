@@ -1,6 +1,5 @@
 # QML Demo 示例代码
 
-> 来源: VQNET2.0-tutorial/source/rst/qml_demo.rst + vqc_demo.rst
 > **重要**: 所有示例代码均来自官方文档。
 
 ---
@@ -244,7 +243,7 @@ layer = QConv(
 ```python
 from pyvqnet.nn import Module, Conv2D, Linear, ReLU, Sequential
 from pyvqnet.qnn.vqc import QMachine, RZ, Probability
-from pyvqnet.qnn.vqc.qcircuit import VQC_HardwareEfficientAnsatz
+from pyvqnet.qnn.vqc import VQC_HardwareEfficientAnsatz
 
 class HybridModel(Module):
     def __init__(self):
@@ -277,6 +276,190 @@ class HybridModel(Module):
 
 ---
 
+## QKMeans 量子 K-Means 聚类
+
+使用量子 SWAP 测试（`QKmeansCircuits`）计算数据点与质心之间的距离，实现量子 K-Means 无监督聚类算法。
+
+### 关键 API
+
+```python
+from pyvqnet.qnn.qkmeans import QKmeans
+from pyvqnet.qnn.qkmeans.circuit import QKmeansCircuits
+```
+
+### 完整代码
+
+```python
+from pyvqnet.qnn.qkmeans import QKmeans
+
+qkmeans = QKmeans(k=3, epoch=5, num_qubits=3)
+qkmeans.run(n=100, std=2)
+```
+
+量子 K-Means 核心在于使用量子 SWAP 测试电路度量距离：将数据点和质心编码为量子态，通过受控 SWAP 门和 H 门测量得到两个态的重叠度（保真度），从而计算相似度。电路使用 3 个量子比特，通过 H 门初始化、U3 旋转编码、受控 SWAP 交换和测量实现。
+
+---
+
+## Quantum Expressibility 量子电路表达能力
+
+评估参数化量子电路（PQC）对 Hilbert 空间的探索能力（Expressibility）。计算电路输出态与 Haar 随机分布之间的 KL 散度，值越小表示表达能力越强。
+
+### 关键 API
+
+```python
+from pyvqnet.qnn.quantum_expressibility import fidelity_of_cir, fidelity_harr_sample
+from pyvqnet.qnn.ansatz import HardwareEfficientAnsatz
+```
+
+### 完整代码
+
+```python
+import numpy as np
+from scipy.stats import entropy
+from pyvqnet.qnn.quantum_expressibility import fidelity_of_cir, fidelity_harr_sample
+from pyvqnet.qnn.ansatz import HardwareEfficientAnsatz
+
+num_qubit = 4
+num_sample = 2000
+
+# Haar 随机分布的保真度采样（作为理论基准）
+flist, p_haar, theory_haar = fidelity_harr_sample(num_qubit, num_sample)
+
+# 计算不同深度 HardwareEfficientAnsatz 的表达能力
+for depth in range(1, 6):
+    f_list, p_cel = fidelity_of_cir(
+        HardwareEfficientAnsatz, num_qubit, depth, num_sample
+    )
+    # KL 散度越小 → 表达能力越强（越接近 Haar 分布）
+    expr = entropy(p_cel, theory_haar)
+    print(f"Depth {depth}: Expressibility = {expr:.4f}")
+```
+
+---
+
+## TTOLayer 张量训练算子层
+
+基于张量训练（Tensor Train, TT）分解的高效神经网络层，将高维权重矩阵分解为多个低秩核心张量，显著减少参数量和计算复杂度。
+
+### 关键 API
+
+```python
+from pyvqnet.qnn.ttolayer import TTOLayer
+```
+
+### 构造函数参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `inp_modes` | list[int] | 输入张量各维度大小 |
+| `out_modes` | list[int] | 输出张量各维度大小 |
+| `mat_ranks` | list[int] | TT 分解的秩（首尾必须为 1） |
+| `biases_initializer` | callable | 偏置初始化函数（默认 tensor.zeros） |
+
+### 完整代码
+
+```python
+import numpy as np
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.ttolayer import TTOLayer
+from pyvqnet.dtype import kfloat32
+
+inp_modes = [4, 5]
+out_modes = [4, 5]
+mat_ranks = [1, 3, 1]  # 首尾必须为 1
+
+tto_layer = TTOLayer(inp_modes, out_modes, mat_ranks)
+
+batch_size = 2
+seq_len = 4
+embed_size = 5
+inp = QTensor(np.random.randn(batch_size, seq_len, embed_size), dtype=kfloat32)
+
+output = tto_layer(inp)
+print("Input shape:", inp.shape)
+print("Output shape:", output.shape)
+```
+
+TTOLayer 将输入 `[batch, len, embed]` 重塑为 TT 格式，通过 `mat_cores`（`ParameterList`）逐模式矩阵乘法变换后恢复原形状，并可选加偏置。
+
+---
+
+## QDRL_VQC 基于 VQC 的数据重上传模型
+
+与 `pyvqnet.qnn.qdrl.vqnet_model.vmodel`（基于 QuantumLayer）不同，QDRL_VQC 使用 VQC 自动微分模块（`QModule`/`QMachine`），在 forward 中通过 `ry()`、`rz()` 等门函数构建电路，并需显式调用 `reset_states()`。
+
+### 关键 API
+
+```python
+from pyvqnet.qnn.qdrl_vqc.qdrl_vqc import QDRL
+```
+
+### 完整代码
+
+```python
+import numpy as np
+from pyvqnet.nn.module import Module
+from pyvqnet.nn.linear import Linear
+from pyvqnet.nn.loss import CategoricalCrossEntropy
+from pyvqnet.optim import sgd
+from pyvqnet.tensor.tensor import QTensor
+from pyvqnet.data import data_generator as get_minibatch_data
+from pyvqnet.qnn.qdrl_vqc.qdrl_vqc import QDRL
+
+class Model(Module):
+    def __init__(self):
+        super(Model, self).__init__()
+        self.qdrl = QDRL(nq=1)  # 1 个量子比特
+        self.fc2 = Linear(2, 2)
+
+    def forward(self, x):
+        x = self.qdrl(x)  # QDRL 内部已调用 reset_states
+        x = self.fc2(x)
+        return x
+
+# 生成圆形分类数据
+def circle(samples):
+    data_x, data_y = [], []
+    for _ in range(samples):
+        x = 2 * np.random.rand(2) - 1
+        y = [0, 1]
+        if np.linalg.norm(x) < 1:
+            y = [1, 0]
+        data_x.append(x)
+        data_y.append(y)
+    return np.array(data_x), np.array(data_y)
+
+model = Model()
+optimizer = sgd.SGD(model.parameters(), lr=0.1)
+loss_func = CategoricalCrossEntropy()
+
+x_train, y_train = circle(500)
+x_train = np.hstack((x_train, np.zeros((x_train.shape[0], 1))))
+
+model.train()
+for i in range(20):
+    for data, label in get_minibatch_data(x_train, y_train, 25, True):
+        optimizer.zero_grad()
+        data = QTensor(data)
+        label = QTensor(label)
+        output = model(data)
+        loss_b = loss_func(label, output)
+        loss_b.backward()
+        optimizer._step()
+```
+
+### QDRL vs QDRL_VQC 对比
+
+| 特性 | QDRL (pyvqnet.qnn.qdrl) | QDRL_VQC (pyvqnet.qnn.qdrl_vqc) |
+|------|------------------------|-------------------------------|
+| 基类 | `vmodel`（基于 QuantumLayer） | `QModule`（基于 VQC 自动微分） |
+| 导入路径 | `from pyvqnet.qnn.qdrl.vqnet_model import vmodel` | `from pyvqnet.qnn.qdrl_vqc.qdrl_vqc import QDRL` |
+| 量子门构建 | 在电路函数中通过 pyqpanda3 构建 | `ry()`, `rz()` 等 VQC 门函数 |
+| reset_states | 不需要 | forward 中必须显式调用 |
+| 参数定义 | 通过 `params` shape 传入 | 通过 `Parameter` 对象 |
+
+---
+
 ## 常见 QML 模型类型
 
 | 模型 | 应用场景 |
@@ -286,9 +469,12 @@ class HybridModel(Module):
 | Quanvolution | 图像处理 |
 | QAE | 数据压缩/生成 |
 | QGAN | 生成任务 |
+| QKMeans | 无监督聚类 |
+| Quantum Expressibility | 电路表达能力分析 |
+| TTOLayer | 张量分解高效神经网络层 |
+| QDRL_VQC | 基于 VQC 的数据重上传分类 |
 | Hybrid CNN+QNN | 混合量子经典模型 |
 
 ---
 
-**Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/qml_demo.rst + vqc_demo.rst
+**Version**: VQNet 2.18.1
