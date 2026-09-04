@@ -10,8 +10,7 @@ VQC 自动微分模块示例
 """
 
 from pyvqnet.nn import Module, Linear
-from pyvqnet.qnn.vqc import QMachine, RZ, RX, Probability
-from pyvqnet.qnn.vqc.qcircuit import VQC_HardwareEfficientAnsatz
+from pyvqnet.qnn.vqc import QMachine, RZ, RX, Probability, VQC_HardwareEfficientAnsatz
 from pyvqnet.tensor import QTensor, arange
 import pyvqnet
 
@@ -34,9 +33,9 @@ class QModel(Module):
 
         # Ansatz 模板
         self.ansatz = VQC_HardwareEfficientAnsatz(
-            num_wires=4,
-            rot_gate_list=["rx", "RY", "rz"],
-            entangle_gate="cnot",
+            n_qubits=4,
+            single_rot_gate_list=["rx", "RY", "rz"],
+            entangle_gate="CNOT",
             entangle_rules="linear",
             depth=2
         )
