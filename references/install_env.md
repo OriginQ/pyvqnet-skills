@@ -1,6 +1,5 @@
 # VQNet 安装与环境配置
 
-> 来源: VQNET2.0-tutorial/source/rst/install.rst + FAQ.rst
 > **重要**: 所有示例代码均来自官方文档。
 
 ---
@@ -8,7 +7,7 @@
 ## 安装要求
 
 ### Python 版本
-- **Python 3.10, 3.11, 3.12**
+- **Python 3.10～3.14**
 
 ### 支持平台
 - Linux
@@ -34,22 +33,23 @@ pip install pyvqnet --upgrade
 - **sm_86**: NVIDIA GeForce RTX 30 系列消费级 GPU
 
 ### CUDA 运行时依赖
-软件包编译时针对 CUDA 11.8，自动安装以下依赖：
+软件包编译时针对 CUDA 12.6，自动安装以下依赖：
 
 ```
-nvidia-cublas-cu11==11.11.3.6
-nvidia-cuda-runtime-cu11==11.8.89
-nvidia-nccl-cu11==2.19.3
-nvidia-cuda-cupti-cu11==11.8.87
-nvidia-cuda-nvrtc-cu11==11.8.89
-nvidia-cufft-cu11==10.9.0.58
-nvidia-cusolver-cu11==11.4.1.48
-nvidia-cusparse-cu11==11.7.5.86
-nvidia-nvtx-cu11==11.8.86
-nvidia-curand-cu11==10.3.0.86
+nvidia-cublas-cu12==12.6.4.1
+nvidia-cuda-runtime-cu12==12.6.77
+nvidia-nccl-cu12==2.28.9
+nvidia-nvjitlink-cu12==12.6.85
+nvidia-cuda-cupti-cu12==12.6.80
+nvidia-cuda-nvrtc-cu12==12.6.85
+nvidia-cufft-cu12==11.3.0.4
+nvidia-cusolver-cu12==11.7.1.2
+nvidia-cusparse-cu12==12.5.4.2
+nvidia-nvtx-cu12==12.6.77
+nvidia-curand-cu12==10.3.7.77
 ```
 
-**注意**: 可能与依赖不同版本 CUDA 的其他软件（如基于 CUDA 12 的 torch）产生冲突。
+**注意**: 可能与依赖不同版本 CUDA 的其他软件产生冲突。
 
 ---
 
@@ -100,19 +100,7 @@ ImportError: DLL load failed while importing _core: 找不到指定的模块。
 **解决方案**: 安装 VC++ 运行时库。
 - 参考: https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
 
-### 2. Linux GLIBCXX 版本问题
-
-```
-ImportError: /lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.30' not found
-```
-
-**解决方案**: 更新 libstdcxx 库
-
-```bash
-conda install -c conda-forge "libstdcxx-ng>=12"
-```
-
-### 3. CUDA 版本冲突
+### 2. CUDA 版本冲突
 
 如果与其他依赖 CUDA 12 的库（如 torch）冲突，建议：
 - 使用 conda 管理环境，为 VQNet 创建独立环境
@@ -132,10 +120,10 @@ pip install pyqpanda3
 
 ### PyTorch Backend（可选）
 
-自 v2.15.0 版本支持使用 PyTorch 作为计算后端：
+自 v2.15.0 版本支持使用 PyTorch 作为计算后端，需自行安装 PyTorch（GPU 场景建议安装与 CUDA 12.x 匹配的版本；官方基准使用 torch 2.11.0+cu126 验证）：
 
 ```bash
-pip install torch>=2.4.0,<2.7.0
+pip install torch
 ```
 
 使用方法：
@@ -144,6 +132,30 @@ pip install torch>=2.4.0,<2.7.0
 import pyvqnet.backends
 pyvqnet.backends.set_backend("torch")
 ```
+
+### 张量网络后端依赖（TN，可选）
+
+张量网络（Tensor Network）后端基于 `jax` 实现自动微分与 GPU 加速，默认安装 `pyvqnet` 不包含该依赖：
+
+```bash
+# CPU
+pip install jax
+# GPU（需 CUDA 12.6）
+pip install "jax[cuda12]"
+
+# 张量网络库
+pip install tensornetwork
+```
+
+### 新增依赖（v2.18.0+）
+
+自 v2.18.0 版本，新增以下核心依赖：
+
+| 依赖 | 用途 |
+|------|------|
+| `rustworkx>=0.13.2` | CircuitGraph 量子电路图数据结构 |
+| `pydantic>=2.0.0` | ZeRO 分布式优化配置解析 |
+| `packaging` | 版本号比较与依赖管理 |
 
 ---
 
@@ -158,6 +170,7 @@ pyvqnet.backends.set_backend("torch")
 | CategoricalCrossEntropy 标签 | `kint64` |
 | SoftmaxCrossEntropy 标签 | `kint64` |
 | NLL_Loss 标签 | `kint64` |
+| bfloat16 混合精度计算 | `kbfloat16`（v2.18.0+） |
 | 普通张量 | `kfloat32`（默认） |
 
 使用 `astype()` 进行类型转换：
@@ -309,9 +322,38 @@ VQNet 是基于本源量子 pyQPanda 开发的量子机器学习工具集。提�
 
 VQNet 不依赖 PyTorch，也不自动安装 PyTorch。
 
-自 v2.15.0 版本支持使用 PyTorch 作为计算后端（需要 `torch>=2.4.0`）。
+自 v2.15.0 版本支持使用 PyTorch 作为计算后端，需自行安装 PyTorch。
 
 ---
 
-**Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/install.rst + FAQ.rst
+## v2.18.1 新特性
+
+VQNet v2.18.1 引入以下重要特性：
+
+### Torch 原生后端（v2.15.0+）
+支持 PyTorch 作为计算后端，无缝切换：
+```python
+import pyvqnet.backends
+pyvqnet.backends.set_backend("torch")
+```
+
+### 分布式训练增强
+- **Pipeline Parallel**: 流水线并行，支持跨设备分层调度
+- **Tensor Parallel**: 张量并行，大模型训练支持
+- **ZeRO Optimization**: 零冗余优化器，基于 `pydantic` 配置
+
+### VQC 自动微分增强
+- **VQC Adjoint Gradient**: 伴随法梯度计算，相比参数平移法提速 2×
+- **QNG (Quantum Natural Gradient)**: 量子自然梯度优化器
+- **QNSPSA**: 量子同时扰动随机逼近优化器
+
+### 量子计算新特性
+- **Block Encoding**: 块编码，支持量子矩阵的稀疏编码与线性组合
+- **LLM Token Sampling**: 量子大模型 token 采样器（Top-K, Top-P, Temperature）
+
+### bfloat16 支持
+新增 `kbfloat16` dtype（v2.18.0+），支持 bfloat16 混合精度训练，降低显存占用。
+
+---
+
+**Version**: VQNet 2.18.1
