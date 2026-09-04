@@ -56,7 +56,7 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 将仓库克隆到本地，然后把技能目录复制（或软链接）到你所用的 AI 工具对应技能目录即可：
 
 ```bash
-git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git
+git clone https://github.com/OriginQ/pyvqnet-skills.git
 ```
 
 **技能目录对照表**：
