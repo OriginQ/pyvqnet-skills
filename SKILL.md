@@ -1,5 +1,5 @@
 ---
-name: vqnet2_api
+name: pyvqnet-skills
 description: PyVQNet/VQNet2.18.1 API 文档助手 - 量子机器学习编程专家。当用户需要"用 VQNet 2.18.1 写量子 ML 代码、实现 VQC、混合量子经典模型、GPU 训练、分布式训练"等任务时，自动调用此 Skill。触发关键词: VQNet, pyvqnet, QTensor, QuantumLayer, 量子神经网络, 变分量子线路, 量子机器学习, QVC, VSQL, Quanvolution。
 license: Apache License 2.0
 ---

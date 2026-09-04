@@ -5,7 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILL_NAME="vqnet2-api"
+SKILL_NAME="pyvqnet-skills"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
