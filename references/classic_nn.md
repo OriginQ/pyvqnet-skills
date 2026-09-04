@@ -1,6 +1,5 @@
 # Classical Neural Network API Reference
 
-> 来源: VQNET2.0-tutorial/source/rst/nn.rst
 > **重要**: 所有示例代码均来自官方文档，可直接运行。
 
 ---
@@ -161,6 +160,37 @@ pyvqnet.nn.Conv1D(input_channels, output_channels, kernel_size, stride=1, paddin
 
 ---
 
+## ConvT2D 转置卷积层
+
+```python
+pyvqnet.nn.ConvT2D(input_channels, output_channels, kernel_size, stride=(1, 1), padding="valid", use_bias=True, dilation_rate=(1, 1), group=1, kernel_initializer=None, bias_initializer=None, dtype=None, name="")
+```
+
+转置卷积（反卷积）层，用于上采样，输入形状 `(B, C_in, H, W)`。
+
+**参数**:
+- `input_channels` - 输入通道数
+- `output_channels` - 输出通道数
+- `kernel_size` - 卷积核大小 (int 或 tuple)
+- `stride` - 步长，默认 (1, 1)
+- `padding` - `"valid"`（无填充）或 `"same"`（输出与输入同尺寸）
+- `dilation_rate` - 空洞卷积参数
+- `group` - 分组卷积
+
+```python
+from pyvqnet.nn import ConvT2D
+from pyvqnet.tensor import QTensor
+from pyvqnet.utils import initializer
+import numpy as np
+
+test_conv = ConvT2D(3, 2, [3, 3], [1, 1], "valid", True, initializer.ones, initializer.ones)
+x = QTensor(np.arange(1, 76).reshape([1, 3, 5, 5]), requires_grad=True)
+y = test_conv.forward(x)
+print(y)
+```
+
+---
+
 ## BatchNorm 归一化层
 
 ### BatchNorm2d
@@ -241,6 +271,34 @@ y = test_conv.forward(x)
 
 ---
 
+## RMSNorm
+
+```python
+pyvqnet.nn.RMSNorm(normalized_shape, eps=1e-5, affine=True, dtype=None)
+```
+
+Root Mean Square Layer Normalization。相比 LayerNorm 不进行均值中心化（无 bias），计算更轻量。
+
+**公式**: `y = x / RMS(x) * γ`, 其中 `RMS(x) = sqrt(ε + mean(x²))`
+
+**参数**:
+- `normalized_shape` - 归一化形状（int 或 tuple），作用于最后一维
+- `eps` - 数值稳定性常数，默认 1e-5
+- `affine` - 是否使用可学习的缩放参数 γ，默认 True
+
+```python
+import numpy as np
+from pyvqnet.tensor import QTensor, kfloat32
+from pyvqnet.nn import RMSNorm
+
+rms = RMSNorm(4)
+x = QTensor(np.arange(1, 9).reshape([2, 4]), requires_grad=True, dtype=kfloat32)
+y = rms(x)
+print(y)
+```
+
+---
+
 ## Pooling 池化层
 
 ### MaxPool2D
@@ -259,6 +317,52 @@ pyvqnet.nn.AvgPool2D(kernel_shape=(2, 2), stride=(2, 2), padding=(0, 0), name=""
 
 2D 平均池化。
 
+### AdaptiveAvgPool2d
+
+```python
+pyvqnet.nn.AdaptiveAvgPool2d(out_size, name="")
+```
+
+自适应平均池化，输出尺寸固定为 `out_size`，不依赖输入尺寸。
+
+```python
+from pyvqnet.nn import AdaptiveAvgPool2d
+from pyvqnet.tensor import QTensor
+import numpy as np
+
+layer = AdaptiveAvgPool2d((1, 1))
+x = QTensor(np.arange(16).reshape([1, 1, 4, 4]), requires_grad=True, dtype=pyvqnet.kfloat32)
+y = layer(x)
+print(y.shape)  # (1, 1, 1, 1)
+```
+
+### MaxPool1D
+
+```python
+pyvqnet.nn.MaxPool1D(kernel, stride, padding="valid", name="")
+```
+
+1D 最大池化。
+
+```python
+from pyvqnet.nn import MaxPool1D
+from pyvqnet.tensor import QTensor
+import numpy as np
+
+test_mp = MaxPool1D([3], [2], "same")
+x = QTensor(np.array([0, 1, 0, 4, 5, 2, 3, 2, 1, 3], dtype=float).reshape([1, 1, 10]), requires_grad=True)
+y = test_mp(x)
+print(y)
+```
+
+### AvgPool1D
+
+```python
+pyvqnet.nn.AvgPool1D(kernel, stride, padding="valid", name="")
+```
+
+1D 平均池化。
+
 ---
 
 ## Dropout
@@ -268,6 +372,24 @@ pyvqnet.nn.Dropout(dropout_rate=0.5)
 ```
 
 随机丢弃神经元。
+
+### DropPath
+
+```python
+pyvqnet.nn.DropPath(dropout_rate=0.5, name="")
+```
+
+Drop Path（随机深度），在残差网络训练中按样本随机丢弃整个残差路径，用于正则化深层网络。
+
+```python
+from pyvqnet.nn import DropPath
+from pyvqnet.tensor import tensor
+
+x = tensor.randu([4, 16, 16])
+layer = DropPath(0.2)
+layer.train()
+y = layer(x)
+```
 
 ```python
 from pyvqnet.nn.dropout import Dropout
@@ -344,6 +466,58 @@ pyvqnet.nn.RNN(input_size, hidden_size, num_layers=1, nonlinearity='tanh', batch
 
 循环神经网络。
 
+### Dynamic_RNN / Dynamic_LSTM / Dynamic_GRU
+
+支持变长序列输入的动态 RNN，配合 `tensor.PackedSequence` 使用。需通过 `pad_sequence`、`pack_pad_sequence` 构建打包序列。
+
+```python
+pyvqnet.nn.Dynamic_RNN(input_size, hidden_size, num_layers=1, nonlinearity='tanh', batch_first=True, use_bias=True, bidirectional=False, dtype=None, name="")
+pyvqnet.nn.Dynamic_LSTM(input_size, hidden_size, num_layers=1, batch_first=True, use_bias=True, bidirectional=False, dtype=None, name="")
+pyvqnet.nn.Dynamic_GRU(input_size, hidden_size, num_layers=1, batch_first=True, use_bias=True, bidirectional=False, dtype=None, name="")
+```
+
+---
+
+## RoPE 旋转位置编码
+
+```python
+pyvqnet.nn.RoPE(head_dim, max_seq_len=2048, base=10000.0, rope_type="standard", scale_factor=4.0, original_max_seq_len=None, beta_fast=32.0, beta_slow=1.0)
+```
+
+旋转位置编码（Rotary Position Embedding），支持 4 种变体：
+
+**参数**:
+- `head_dim` - 注意力头维度（必须为偶数）
+- `max_seq_len` - 预计算 cos/sin 缓存的最大序列长度
+- `base` - RoPE 基础频率（Llama 使用 500000.0）
+- `rope_type` - 变体类型：
+  - `"standard"` - 标准 RoPE
+  - `"ntk"` - NTK-aware RoPE（扩展上下文）
+  - `"dynamic_ntk"` - 动态 NTK（根据实际序列长度动态调整）
+  - `"yarn"` - YaRN（插值 + NTK 混合）
+- `scale_factor` - 上下文扩展倍数
+- `original_max_seq_len` - 预训练序列长度
+- `beta_fast` / `beta_slow` - YaRN 频率截止参数
+
+**输入/输出形状**:
+- q: `(batch, num_q_heads, seq_len, head_dim)`
+- k: `(batch, num_kv_heads, seq_len, head_dim)`
+- 输出: (out_q, out_k)，与输入形状相同
+
+```python
+import numpy as np
+from pyvqnet.tensor import QTensor, kfloat32
+from pyvqnet.nn import RoPE
+
+rope = RoPE(64, max_seq_len=128)
+q = QTensor(np.random.randn(2, 8, 128, 64).astype(np.float32))
+k = QTensor(np.random.randn(2, 4, 128, 64).astype(np.float32))
+out_q, out_k = rope(q, k)
+print(out_q.shape, out_k.shape)
+```
+
+**注意**: RoPE 通常需要 GPU（CUDA）后端运行。
+
 ---
 
 ## 激活函数
@@ -379,7 +553,7 @@ pyvqnet.nn.Tanh(name="")
 ### Softmax
 
 ```python
-pyvqnet.nn.Softmax(axis=-1, name="")
+pyvqnet.nn.Softmax(dim=-1, name="")
 ```
 
 ### LeakyReLU
@@ -388,11 +562,81 @@ pyvqnet.nn.Softmax(axis=-1, name="")
 pyvqnet.nn.LeakyReLu(alpha=0.01, name="")
 ```
 
-### Gelu
+### Gelu / GeLU
 
 ```python
 pyvqnet.nn.Gelu(approximate="tanh", name="")
 ```
+
+`GeLU` 是 `Gelu` 的别名。
+
+### SiLU
+
+```python
+pyvqnet.nn.SiLU(name="")
+```
+
+Sigmoid Linear Unit（也称为 Swish）：`SiLU(x) = x * sigmoid(x)`。
+
+```python
+from pyvqnet.nn import SiLU
+from pyvqnet.tensor import QTensor
+
+layer = SiLU()
+y = layer(QTensor([-1.0, 0.0, 1.0, 2.0]))
+print(y)
+```
+
+### SwiGLU
+
+```python
+pyvqnet.nn.SwiGLU(name="")
+```
+
+SwiGLU 激活函数：`SwiGLU(gate, up) = SiLU(gate) * up`。常用于 LLM 的 FFN 层。接收两个输入张量（gate 和 up）。
+
+```python
+from pyvqnet.nn import SwiGLU
+from pyvqnet.tensor import tensor
+
+gate = tensor.randn([4, 128])
+up = tensor.randn([4, 128])
+layer = SwiGLU()
+out = layer(gate, up)
+print(out.shape)
+```
+
+### ELU
+
+```python
+pyvqnet.nn.ELU(alpha=1.0, name="")
+```
+
+指数线性单元（Exponential Linear Unit）。
+
+### Softplus
+
+```python
+pyvqnet.nn.Softplus(name="")
+```
+
+`Softplus(x) = log(1 + exp(x))`，ReLU 的光滑近似。
+
+### Softsign
+
+```python
+pyvqnet.nn.Softsign(name="")
+```
+
+`Softsign(x) = x / (1 + |x|)`。
+
+### HardSigmoid
+
+```python
+pyvqnet.nn.HardSigmoid(name="")
+```
+
+分段线性近似 Sigmoid。
 
 ---
 
@@ -483,6 +727,29 @@ pyvqnet.nn.SoftmaxCrossEntropy(name="")
 
 带 Softmax 的交叉熵（数值更稳定）。
 
+### NLL_Loss
+
+```python
+pyvqnet.nn.NLL_Loss(name="")
+```
+
+负对数似然损失（Negative Log Likelihood Loss），用于分类任务。输入需为 log-probabilities（通常由 LogSoftmax 产生）。
+
+**注意**: 标签必须是 `kint64` 类型。
+
+```python
+from pyvqnet.tensor import QTensor
+from pyvqnet import kint64
+from pyvqnet.nn import NLL_Loss
+
+x = QTensor([[0.9, 0.2, 0.1], [0.1, 0.8, 0.3]], requires_grad=True)
+y = QTensor([0, 1], dtype=kint64)
+
+loss_fn = NLL_Loss()
+result = loss_fn(y, x)  # (标签, 预测值)
+print(result)
+```
+
 ---
 
 ## 优化器
@@ -571,6 +838,39 @@ pyvqnet.optim.Adadelta(params, lr=0.01, beta=0.99, epsilon=1e-8)
 pyvqnet.optim.Adamax(params, lr=0.01, beta1=0.9, beta2=0.999, epsilon=1e-8)
 ```
 
+### Rotosolve
+
+```python
+pyvqnet.optim.Rotosolve(max_iter=50)
+```
+
+**量子参数优化器**。Rotosolve 算法用于优化量子测量期望值的线性组合（参考论文 [arXiv:1903.12166](https://arxiv.org/abs/1903.12166)）。
+
+不需要梯度计算，通过参数移位（parameter shift）直接更新。
+
+**参数**:
+- `max_iter` - 最大迭代次数
+
+**注意**: 
+- 损失函数必须以 numpy 数组形式返回目标值（非 QTensor）
+- 调用 `opt.minimize(params, costfunction)` 而非 `opt._step()`
+- 适用于中小规模量子电路的参数优化
+
+```python
+from pyvqnet.optim.rotosolve import Rotosolve
+from pyvqnet.tensor.tensor import QTensor
+import numpy as np
+
+def cost(params):
+    # params is numpy array, return scalar
+    return (params[0] - 0.5) ** 2 + (params[1] + 0.3) ** 2
+
+t = QTensor([0.3, 0.25])
+opt = Rotosolve(max_iter=10)
+costs = opt.minimize(t, cost)
+print(costs[-1])  # final cost
+```
+
 ---
 
 ## 完整训练示例
@@ -648,6 +948,207 @@ optimizer._step()
 
 ---
 
+## Swin Transformer
+
+Swin Transformer 层级式视觉 Transformer，使用滑动窗口注意力机制。
+
+### SwinTransformer
+
+```python
+pyvqnet.nn.SwinTransformer(patch_size, embed_dim, depths, num_heads, window_size, mlp_ratio=4.0, dropout=0.0, attention_dropout=0.0, stochastic_depth_prob=0.1, num_classes=1000, norm_layer=None, block=None, downsample_layer=PatchMerging, feat_dim=16)
+```
+
+**参数**:
+- `patch_size` - Patch 大小，如 `[4, 4]`
+- `embed_dim` - Patch 嵌入维度
+- `depths` - 各 Stage 的 Transformer Block 数量，如 `[2, 2, 18, 2]`
+- `num_heads` - 各 Stage 注意力头数，如 `[4, 8, 16, 32]`
+- `window_size` - 窗口大小，如 `[7, 7]`
+- `mlp_ratio` - MLP 隐藏层维度与嵌入维度的比例
+- `stochastic_depth_prob` - 随机深度概率
+- `num_classes` - 分类数（`feat_dim` 控制最终特征维度）
+
+```python
+from pyvqnet.nn import SwinTransformer
+from pyvqnet.tensor import tensor
+
+model = SwinTransformer(
+    patch_size=[4, 4],
+    embed_dim=128,
+    depths=[2, 2, 18, 2],
+    num_heads=[4, 8, 16, 32],
+    window_size=[7, 7],
+    stochastic_depth_prob=0.5,
+)
+x = tensor.randn([1, 3, 224, 224])
+y = model(x)
+print(y.shape)
+```
+
+### swin_b
+
+```python
+pyvqnet.nn.swin_b(weights=None, **kwargs)
+```
+
+Swin-Base 预配置模型（等同 SwinTransformer-B）。参数:
+- patch_size=[4, 4], embed_dim=128, depths=[2, 2, 18, 2]
+- num_heads=[4, 8, 16, 32], window_size=[7, 7]
+- stochastic_depth_prob=0.5
+
+```python
+from pyvqnet.nn import swin_b
+model = swin_b()
+```
+
+---
+
+## LLM Token 采样函数
+
+LLM 推理中的 token 采样函数，位于 `pyvqnet.nn.functional`。**需要 GPU（CUDA）后端**。
+
+### top_k_top_p_sampling_from_logits
+
+```python
+pyvqnet.nn.functional.top_k_top_p_sampling_from_logits(logits, temperature=1.0, top_k=0, top_p=1.0, deterministic=True) -> (sampled_tokens, valid)
+```
+
+端到端 token 采样：top_k 过滤 → temperature 缩放 → softmax → top_p 拒绝采样。
+
+**参数**:
+- `logits` - 形状 `(batch_size, vocab_size)`，float32/float64/bf16
+- `temperature` - 温度参数（标量或 `(batch_size,)` 张量）
+- `top_k` - Top-K 阈值，0 表示不限制
+- `top_p` - Top-P（nucleus）阈值，1.0 表示不限制
+- `deterministic` - 是否确定性扫描
+- 返回: `(sampled_tokens, valid)` - tokens 为 int64 形状 `(batch_size,)`，valid 为 bool
+
+```python
+import pyvqnet
+from pyvqnet.tensor import QTensor
+from pyvqnet.nn.functional import top_k_top_p_sampling_from_logits
+
+pyvqnet.backends.set_backend("pyvqnet-ad")
+logits = QTensor([[0.1, 0.2, 0.5, 0.1, 0.1]], device="gpu:0")
+tokens, valid = top_k_top_p_sampling_from_logits(logits, temperature=0.8, top_k=3, top_p=0.9)
+print(tokens.to_numpy())  # e.g. [2]
+```
+
+### top_k_top_p_sampling_from_probs
+
+```python
+pyvqnet.nn.functional.top_k_top_p_sampling_from_probs(probs, top_k=0, top_p=1.0, deterministic=True) -> (sampled_tokens, valid)
+```
+
+从概率分布中进行联合 Top-K + Top-P 采样（不排序整个词汇表，使用 pivot-convergence 拒绝采样）。
+
+### top_p_sampling_from_probs
+
+```python
+pyvqnet.nn.functional.top_p_sampling_from_probs(probs, top_p=1.0, deterministic=True) -> (sampled_tokens, valid)
+```
+
+仅 Top-P（nucleus）采样。
+
+### top_k_sampling_from_probs
+
+```python
+pyvqnet.nn.functional.top_k_sampling_from_probs(probs, top_k=0, deterministic=True) -> (sampled_tokens, valid)
+```
+
+仅 Top-K 采样。
+
+### min_p_sampling_from_probs
+
+```python
+pyvqnet.nn.functional.min_p_sampling_from_probs(probs, min_p=0.0, deterministic=True) -> (sampled_tokens, valid)
+```
+
+Min-P 采样：仅保留 `prob >= max_prob * min_p` 的 token，然后从中采样。
+
+```python
+import pyvqnet
+from pyvqnet.tensor import QTensor
+from pyvqnet.nn.functional import min_p_sampling_from_probs
+
+pyvqnet.backends.set_backend("pyvqnet-ad")
+probs = QTensor([[0.1, 0.3, 0.5, 0.1]], device="gpu:0")
+tokens, valid = min_p_sampling_from_probs(probs, min_p=0.1)
+print(tokens.to_numpy())  # e.g. [2]
+```
+
+**注意**: LLM 采样函数为纯推理操作（无 autograd），需要在 GPU 上运行。
+
+---
+
+## Interpolate 插值模块
+
+```python
+pyvqnet.nn.Interpolate(size=None, scale_factor=None, mode="nearest", align_corners=None, recompute_scale_factor=None, name="")
+```
+
+上采样/下采样模块，支持 `"nearest"`、`"bilinear"`、`"bicubic"` 模式。
+
+```python
+from pyvqnet.nn import Interpolate
+from pyvqnet.tensor import tensor
+import pyvqnet
+
+model = Interpolate(size=3, mode="bilinear")
+input_vqnet = tensor.randu((1, 1, 6, 6), dtype=pyvqnet.kfloat32, requires_grad=True)
+output_vqnet = model(input_vqnet)
+print(output_vqnet.shape)
+```
+
+---
+
+## Pixel Shuffle / Unshuffle
+
+### Pixel_Shuffle
+
+```python
+pyvqnet.nn.Pixel_Shuffle(upscale_factors, name="")
+```
+
+将形状 `(*, C × r², H, W)` 重排为 `(*, C, H × r, W × r)`，用于超分辨率上采样。
+
+### Pixel_Unshuffle
+
+```python
+pyvqnet.nn.Pixel_Unshuffle(downscale_factors, name="")
+```
+
+Pixel_Shuffle 的逆操作，将 `(*, C, H × r, W × r)` 重排为 `(*, C × r², H, W)`。
+
+```python
+from pyvqnet.nn import Pixel_Shuffle
+from pyvqnet.tensor import tensor
+
+ps = Pixel_Shuffle(3)
+inx = tensor.ones([5, 2, 3, 18, 4, 4])
+y = ps(inx)
+print(y.shape)
+```
+
+---
+
+## Identity 恒等层
+
+```python
+pyvqnet.nn.Identity(name="")
+```
+
+占位恒等运算符，返回输入本身。用于模型结构中的占位或条件分支。
+
+```python
+from pyvqnet.nn import Identity
+layer = Identity()
+x = QTensor([1.0, 2.0, 3.0])
+y = layer(x)  # 返回 x 本身
+```
+
+---
+
 ## 量子经典混合层
 
 ### QLinear
@@ -702,8 +1203,12 @@ print(y)
 4. **GPU 训练**: 模型和数据都要移动到 GPU
 5. **zero_grad**: 训练前要调用 `optimizer.zero_grad()` 清零梯度
 6. **_step**: VQNet 用 `optimizer._step()` 而不是 `step()`
+7. **Rotosolve 用法**: 调用 `opt.minimize(params, costfunction)` 而非 `_step()`，损失函数返回 numpy 数组
+8. **RoPE 硬件需求**: RoPE 通常需要 GPU（CUDA）后端运行
+9. **LLM 采样硬件需求**: `top_k_top_p_sampling_from_logits` 等采样函数需要 GPU（CUDA）后端，且为纯推理（无 autograd）
+10. **SwiGLU 双输入**: SwiGLU 接收两个参数 `(gate, up)`，不是单输入激活函数
+11. **RMSNorm vs LayerNorm**: RMSNorm 无均值中心化，无 bias 参数，计算更轻量
 
 ---
 
 **Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/nn.rst
