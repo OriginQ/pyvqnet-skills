@@ -68,9 +68,9 @@ batch_x = QTensor(...)  # Shape: [batch_size, 784]
 batch_y = QTensor(...)  # Shape: [batch_size]
 optimizer.zero_grad()
 output = model(batch_x)
-loss = loss_fn(output, batch_y)
+loss = loss_fn(batch_y, output)  # VQNet: (y_true, y_pred) 标签在前
 loss.backward()
-optimizer.step()
+optimizer._step()
 ```
 
 ## Available QNN Components
