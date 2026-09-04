@@ -74,7 +74,7 @@ optimizer.zero_grad()
 output = model(batch_x)
 loss = loss_fn(batch_y, output)  # VQNet: (label, prediction)
 loss.backward()
-optimizer._step()  # VQNet uses _step()
+optimizer._step()  # _step() 与 step() 等价
 
 print(f"Output logits:\n{output}")
 print()

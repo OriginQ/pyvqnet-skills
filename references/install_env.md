@@ -287,7 +287,7 @@ loss_fn = CategoricalCrossEntropy()
 
 # 训练循环
 x = QTensor(np.random.randn(32, 3))
-y = QTensor(np.random.randint(0, 2, (32, 2)), dtype=np.int64)
+y = QTensor(np.random.randint(0, 2, (32, 2)), dtype=kint64)  # 标签必须用 kint64，不要用 np.int64
 
 output = model(x)
 loss = loss_fn(y, output)  # 注意：(标签, 预测值)
@@ -309,7 +309,7 @@ VQNet 是基于本源量子 pyQPanda 开发的量子机器学习工具集。提�
 1. 通过 pyQPanda 构建虚拟机，结合 VQNet 接口构建量子、量子经典混合模型 `Module`
 2. 调用 `forward()` 进行量子线路模拟以及经典神经网络前向运算
 3. 调用 `backward()` 进行自动微分，计算参数梯度
-4. 结合优化器的 `_step()` 进行参数优化
+4. 结合优化器的 `_step()`（或等价的 `step()`）进行参数优化
 
 ### Q: 为什么定义的模型参数在训练时不更新？
 

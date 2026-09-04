@@ -1202,7 +1202,7 @@ print(y)
 3. **ModuleList vs list**: 子模块必须用 `ModuleList`，不能用 Python `list`
 4. **GPU 训练**: 模型和数据都要移动到 GPU
 5. **zero_grad**: 训练前要调用 `optimizer.zero_grad()` 清零梯度
-6. **_step**: VQNet 用 `optimizer._step()` 而不是 `step()`
+6. **优化器更新**: `optimizer._step()` 与 `optimizer.step()` 均可用且效果等价（官方示例多写 `_step()`，官方类型标注 `.pyi` 声明的是 `step()`）
 7. **Rotosolve 用法**: 调用 `opt.minimize(params, costfunction)` 而非 `_step()`，损失函数返回 numpy 数组
 8. **RoPE 硬件需求**: RoPE 通常需要 GPU（CUDA）后端运行
 9. **LLM 采样硬件需求**: `top_k_top_p_sampling_from_logits` 等采样函数需要 GPU（CUDA）后端，且为纯推理（无 autograd）
@@ -1211,4 +1211,4 @@ print(y)
 
 ---
 
-**Version**: VQNet 2.0
+**Version**: VQNet 2.18.1
