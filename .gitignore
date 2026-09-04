@@ -1,0 +1,10 @@
+# Local tool / agent state
+.omo/
+.claude/
+
+# Local work plan docs (kept outside version control)
+UPDATE_PLAN_v2.18.1.md
+
+# Python artifacts from running examples/
+__pycache__/
+*.py[cod]
