@@ -432,7 +432,8 @@ w = tensor.ones([ansatz.get_para_num()])
 cir2 = ansatz.create_ansatz(w)
 
 # UCCSD (量子化学)
-weight = tensor.zeros([8])
+# weight 形状 = [len(s_wires) + len(d_wires)] = [2 + 2] = 4
+weight = tensor.zeros([4])
 cir3 = UCCSD(weight,
              wires=[0, 1, 2, 3, 4, 5],
              s_wires=[[0, 1, 2], [0, 1, 2, 3, 4]],
@@ -578,7 +579,7 @@ layer = QuantumBatchAsyncQcloudLayer(
 - `pyvqnet.backends.set_backend(backend_name)` - 切换全局后端 ("pyvqnet", "pyvqnet-ad", "torch", "torch-native")
 - `pyvqnet.backends.get_backend(t=None)` - 获取当前后端
 - `pyvqnet.nn.torch.TorchModule` - PyTorch 后端经典神经网络基类
-- `pyvqnet.qnn.vqc.torch.QModule` - PyTorch 后端 VQC 自动微分基类
+- `pyvqnet.qnn.vqc.sv.torch.QModule` - PyTorch 后端 VQC 自动微分基类
 - `QTensor.data` 变为 `torch.Tensor` (torch 后端下)
 
 **注意事项**:
