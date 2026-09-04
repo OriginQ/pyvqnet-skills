@@ -51,21 +51,32 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 
 ## Installation
 
-### For Claude Code (Claude CLI)
+### 安装方法
+
+将仓库克隆到本地，然后把技能目录复制（或软链接）到你所用的 AI 工具对应技能目录即可：
 
 ```bash
-# Clone the repository
 git clone https://gitlab.qpanda.cn/qml/pyvqnet-skills.git
+```
 
+**技能目录对照表**：
+
+| 工具 | 用户/全局技能目录 | 项目技能目录 |
+|------|------------------|--------------|
+| OpenCode | `~/.config/opencode/skills/` | `<project>/.opencode/skills/` |
+| Claude Code | `~/.claude/skills/` | `<project>/.claude/skills/` |
+| Gemini CLI | `~/.gemini/skills/` | `<project>/.gemini/skills/` |
+| Codex | `~/.codex/skills/` | `<project>/.codex/skills/` |
+| Cline | `~/.cline/skills/` | 仅全局 |
+
+以 Claude Code 全局安装为例：
+
+```bash
 # Copy to Claude Code skills directory
 cp -r pyvqnet-skills ~/.claude/skills/vqnet2-api
 ```
 
-### For VS Code Cline / Roo Code
-
-1. Open Cline settings
-2. Find "Custom Instructions" or "Skill Packages" section
-3. Add the path to this repository
+其他工具同理：将仓库复制到上表对应的技能目录下即可，目录名即技能加载名。
 
 ### Requirements for VQNet Development
 
