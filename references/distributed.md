@@ -539,12 +539,12 @@ if rank == 0:
 ## 辅助函数
 
 ```python
-from pyvqnet.distributed import get_rank, get_local_rank, get_host_name, init_group
+from pyvqnet.distributed import get_rank, get_local_rank, get_host_name, init_groups
 
 get_rank()        # 获取当前进程号
 get_local_rank()  # 获取当前机器进程号
 get_host_name()   # 获取主机名
-init_group(rankL) # 初始化进程组
+init_groups(rankL) # 初始化进程组（v2.18.0 起由 init_group 重命名为 init_groups）
 ```
 
 ---
@@ -1071,4 +1071,4 @@ Comm_OP.broadcast_model_params(model, src=0)  # 广播模型参数
 
 ---
 
-**Version**: VQNet 2.0
+**Version**: VQNet 2.18.1

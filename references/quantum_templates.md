@@ -279,9 +279,9 @@ Controlled-SWAP gate. The **first** qubit in the list is the control qubit.
 
 **Matrix:**
 ```
-8x8 matrix: diagonal with [1, 1, 1, 1, 1, 1, 1, 1]
-except last entry is -1? Actually:
-CSWAP = I_controls ⊕ SWAP when control=1
+CSWAP = I_control ⊕ SWAP (when control = 1)
+
+8x8 permutation matrix: identity on rows 0-4, swaps basis states |110⟩ and |101⟩, identity on row 7.
 ```
 
 **Parameters:**
@@ -294,7 +294,7 @@ from pyvqnet.qnn.pq3 import CSWAPcircuit
 import pyqpanda3.core as pq
 
 m_qlist = range(3)
-c = CSWAPcircuit([m_qlist[1], m_qlist[2], m_qlist[0]])  # control is last here
+c = CSWAPcircuit([m_qlist[1], m_qlist[2], m_qlist[0]])  # first element (qubit 1) is the control
 print(c)
 ```
 
