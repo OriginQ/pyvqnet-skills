@@ -1,4 +1,4 @@
-# CLAUDE.md - VQNet 2.0 API Skill
+# CLAUDE.md - VQNet 2.18.1 API Skill
 
 ## Project Overview
 
@@ -51,6 +51,11 @@ Use this skill when user mentions:
 | QML Demo 示例 | `references/qml_demos.md` |
 | 分布式训练 | `references/distributed.md` |
 | 量子大模型微调 | `references/quantum_llm.md` |
+| PyTorch 后端切换 | `references/torch_api.md` |
+| 量子测量与熵函数 | `references/measurement.md` |
+| QNN 架构总览与最佳实践 | `references/qnn.md` |
+| 量子电路模板与拟设 | `references/quantum_templates.md` |
+| 工具函数 (随机种子/初始化器) | `references/utils.md` |
 
 ---
 
@@ -69,7 +74,12 @@ vqnet2-skill/
     ├── vqc.md                   # VQC 自动微分 API
     ├── qml_demos.md             # QVC, QDRL, Quanvolution 示例
     ├── distributed.md           # MPI/NCCL 分布式训练
-    └── quantum_llm.md           # 量子大模型微调
+    ├── quantum_llm.md           # 量子大模型微调
+    ├── torch_api.md             # PyTorch 后端切换
+    ├── measurement.md           # 量子测量与熵函数
+    ├── qnn.md                   # QNN 架构总览与最佳实践
+    ├── quantum_templates.md     # 量子电路模板与拟设
+    └── utils.md                 # 工具函数
 ```
 
 ---
@@ -112,6 +122,7 @@ loss_fn(y_pred, y_true)  # PyTorch: 预测在前
 |------|-------|
 | Embedding 输入 | `kint64` |
 | CrossEntropyLoss 标签 | `kint64` |
+| bfloat16 精度计算 | `kbfloat16` |
 | 普通张量 | `kfloat32`（默认） |
 
 ```python
@@ -130,6 +141,8 @@ labels = QTensor([0, 1, 2], dtype=kint64)
 5. **QCloud Token**: 使用 `os.getenv("QCLOUD_TOKEN")`，不要硬编码
 6. **混合后端**: 不同 backend 的 QTensor 不能混用
 7. **GPU 训练**: 数据和模型都要移动到 GPU
+8. **VQCQCloudLayer**: QMachine 必须设置 `save_ir=True`，不能使用 `MeasureAll`
+9. **NoiseQuantumLayer**: 电路函数签名需 `(input, param, qubits, cbits, m_machine)`
 
 ---
 
@@ -139,7 +152,7 @@ labels = QTensor([0, 1, 2], dtype=kint64)
 pip install pyvqnet
 pip install pyqpanda3
 # Optional:
-pip install torch>=2.4.0,<2.7.0  # PyTorch backend
+pip install torch  # PyTorch backend（需自行安装，官方基准 torch 2.11.0+cu126 验证）
 conda install conda-forge::mpich-mpicxx==4.1.2  # 分布式 CPU
 pip install mpi4py  # 分布式 CPU
 ```
@@ -158,6 +171,8 @@ Before generating VQNet code:
 - [ ] 子模块使用 `ModuleList`
 - [ ] 无硬编码 QCloud Token
 - [ ] GPU 模型和数据都移动到 GPU
+- [ ] VQCQCloudLayer 中 save_ir=True 且不用 MeasureAll
+- [ ] NoiseQuantumLayer 电路函数包含 (input, param, qubits, cbits, m_machine)
 
 ---
 

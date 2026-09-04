@@ -1,6 +1,5 @@
 # Quantum Layers API Reference
 
-> 来源: VQNET2.0-tutorial/source/rst/qnn_pq3.rst + qnn.rst
 > **重要**: 所有示例代码均来自官方文档，可直接运行。
 
 ---
@@ -95,6 +94,19 @@ pyvqnet.qnn.pq3.quantumlayer.QpandaQProgVQCLayer(
 - `qvm_type` - "cpu" 或 "gpu"
 - `pauli_str_dict` - Pauli 期望字典，如 `{'Z0 X1': 10}`
 - `shots` - 测量次数
+
+**与 QuantumLayerV2 的区别**:
+
+| 维度 | QuantumLayerV2 (`QuantumLayer`) | QuantumLayerV3 (`QpandaQProgVQCLayer`) |
+|------|-------------------------------|----------------------------------------|
+| 函数签名 | `(input, param)` | `(input, param)` |
+| 返回值 | `np.ndarray` / `list` (测量结果) | `pyqpanda3.core.QProg` (量子程序) |
+| 测量方式 | 在 circuit 函数内自行调用 `ProbsMeasure` | 由 Layer 内部自动处理测量 |
+| Pauli 期望 | 不直接支持 | 通过 `pauli_str_dict` 参数支持 |
+| QVM 类型 | 默认 CPUQVM | 支持 `"cpu"` 或 `"gpu"` |
+| 初始化参数 | 无 initializer | 支持 `initializer` 参数 |
+| `shots` | 在测量函数中指定 | 在 Layer 构造时指定 |
+| CRX/CRY/CRZ 梯度 | 标准 parameter-shift | 使用公式 https://iopscience.iop.org/article/10.1088/1367-2630/ac2cb3 |
 
 **示例**:
 ```python
@@ -193,6 +205,88 @@ y = layer(x)
 y.backward()
 print(layer.m_para.grad)
 print(x.grad)
+```
+
+---
+
+## VQCQCloudLayer
+
+**VQC 模块云提交层** - 将 VQC Module 提交到本源量子云执行。前向和反向传播均在量子云上完成，本地不执行任何量子计算。
+
+```python
+pyvqnet.qnn.pq3.vqc_qcloud_layer.VQCQCloudLayer(
+    vqc_module,
+    qcloud_token,
+    pauli_str_dict=None,
+    shots=1000,
+    name="",
+    submit_kwargs={},
+    query_kwargs={}
+)
+```
+
+**参数**:
+- `vqc_module` - VQC Module (来自 `pyvqnet.qnn.vqc`)，内部必须包含 `QMachine` 且 `save_ir=True`
+- `qcloud_token` - 从 https://qcloud.originqc.com.cn/ 获取的 API Token
+- `pauli_str_dict` - Pauli 算子字典，用于期望值计算，如 `{'Z0': 1, 'Z1': 1}`
+- `shots` - 测量次数，默认: 1000
+- `submit_kwargs` - 提交参数，默认: `{"test_qcloud_fake": True}`（测试模式）
+- `query_kwargs` - 查询参数
+
+**关键约束**:
+1. VQC 模块中的 `QMachine` 必须设置 `save_ir=True`
+2. VQC 模块中必须调用 `reset_states(batchsize)`
+3. **不支持** VQC 模块中的 `MeasureAll` — 改用 `pauli_str_dict` 指定观测量
+4. Token 通过 `os.getenv("QCLOUD_TOKEN")` 获取，**不要硬编码**
+5. 梯度使用 parameter-shift 规则在量子云上计算
+
+**VQCQCloudLayer vs QuantumBatchAsyncQcloudLayer**:
+
+| 维度 | VQCQCloudLayer | QuantumBatchAsyncQcloudLayer |
+|------|----------------|------------------------------|
+| 电路定义 | VQC Module (高层 API) | 原始 QPanda QProg 函数 (底层 API) |
+| 量子门 | 使用 VQC 门 (RX, RY, RZ, CNOT 等) | 使用 QPanda 原生门 |
+| 训练参数 | VQC Module 的 Parameter | 通过 `para_num` 指定 |
+| 输入编码 | 在 Module forward 中手动编码 | 在 circuit 函数中手动编码 |
+
+**示例**:
+```python
+import os
+import pyvqnet
+from pyvqnet.qnn.vqc import QMachine, RX, U1, CNOT
+from pyvqnet.qnn import Module
+from pyvqnet.qnn.pq3 import VQCQCloudLayer
+
+token = os.getenv("QCLOUD_TOKEN")  # 不要硬编码！
+
+class QModel(Module):
+    def __init__(self, num_wires, dtype):
+        super(QModel, self).__init__()
+        self.qm = QMachine(num_wires, dtype=dtype, save_ir=True)
+        self.rx_layer = RX(has_params=True, trainable=False, wires=0)
+        self.u1 = U1(has_params=True, trainable=True, wires=[1])
+        self.cnot = CNOT(wires=[0, 1])
+
+    def forward(self, x, *args, **kwargs):
+        self.qm.reset_states(x.shape[0])
+        self.rx_layer(params=x[:, [0]], q_machine=self.qm)
+        self.cnot(q_machine=self.qm)
+        self.u1(q_machine=self.qm)
+        return x
+
+qmodel = QModel(num_wires=2, dtype=pyvqnet.kcomplex64)
+layer = VQCQCloudLayer(
+    qmodel,
+    token,
+    pauli_str_dict={'Z0': 1, 'Z1': 1},
+    shots=1000,
+    submit_kwargs={"test_qcloud_fake": True},  # 测试模式
+)
+x = pyvqnet.tensor.QTensor([[0.5, 0.3], [0.5, 0.3]], requires_grad=True)
+y = layer(x)
+y.backward()
+print(x.grad)
+print(qmodel.u1.params.grad)
 ```
 
 ---
@@ -304,6 +398,101 @@ print(y)
 
 ---
 
+## NoiseQuantumLayer
+
+**噪声模拟量子层** - 在带噪声的量子虚拟机 (`pyqpanda.NoiseQVM`) 上模拟参数化量子电路，支持自定义噪声模型配置。
+
+```python
+pyvqnet.qnn.quantumlayer.NoiseQuantumLayer(
+    qprog_with_measure,
+    para_num,
+    machine_type,
+    num_of_qubits,
+    num_of_cbits=1,
+    diff_method="parameter_shift",
+    delta=0.01,
+    noise_set_config=None,
+    dtype=None,
+    name=""
+)
+```
+
+**参数**:
+- `qprog_with_measure` - 量子电路函数，**签名必须为 `(input, param, qubits, cbits, m_machine)`**
+- `para_num` - 参数数量
+- `machine_type` - 必须为 `"noise"`（目前仅支持噪声模拟）
+- `num_of_qubits` - 量子比特数
+- `num_of_cbits` - 经典比特数，默认: 1
+- `diff_method` - 梯度方法: `"parameter_shift"` 或 `"finite_diff"`，默认: `"parameter_shift"`
+- `delta` - 有限差分步长，默认: 0.01
+- `noise_set_config` - 噪声配置函数，**签名: `def noise_set_config(qvm, qubits)`**，默认: 使用 BITFLIP_KRAUS_OPERATOR (p=0.01)
+- `dtype` - 参数数据类型，默认: None
+- `name` - 模块名称
+
+**关键函数签名**:
+```python
+def qprog_with_measure(input, param, qubits, cbits, m_machine):
+    # input: 一维经典输入数据
+    # param: 一维变分参数
+    # qubits: 由 NoiseQuantumLayer 分配的量子比特
+    # cbits: 由 NoiseQuantumLayer 分配的经典比特
+    # m_machine: 由 NoiseQuantumLayer 创建的噪声模拟器 (NoiseQVM)
+    # 返回: 期望值 (float)
+```
+
+**内置默认噪声模型** (当 `noise_set_config=None` 时):
+- BITFLIP_KRAUS_OPERATOR 应用于: X, Y, Z, RX, RY, RZ, H 门 (p=0.01)
+- DAMPING_KRAUS_OPERATOR 应用于: CNOT 门 (p=0.01)
+
+**示例**:
+```python
+from pyvqnet.qnn import NoiseQuantumLayer
+from pyvqnet.tensor import QTensor
+import pyqpanda as pq
+import numpy as np
+
+# 定义电路函数 (签名包含 qubits, cbits, m_machine)
+def circuit(input, param, qubits, cbits, machine):
+    cir = pq.QCircuit()
+    cir.insert(pq.H(qubits[0]))
+    cir.insert(pq.RY(qubits[0], input[0]))
+    cir.insert(pq.RY(qubits[0], param[0]))
+    prog = pq.QProg()
+    prog.insert(cir)
+    prog << pq.measure_all(qubits, cbits)
+
+    result = machine.run_with_configuration(prog, cbits, 100)
+    counts = np.array(list(result.values()))
+    states = np.array(list(result.keys())).astype(float)
+    probabilities = counts / 100
+    expectation = np.sum(states * probabilities)
+    return expectation
+
+# 自定义噪声配置
+def my_noise_config(qvm, qubits):
+    p = 0.01
+    from pyqpanda import NoiseModel, GateType
+    qvm.set_noise_model(NoiseModel.BITFLIP_KRAUS_OPERATOR, GateType.PAULI_X_GATE, p)
+    qvm.set_noise_model(NoiseModel.BITFLIP_KRAUS_OPERATOR, GateType.HADAMARD_GATE, p)
+    qvm.set_noise_model(NoiseModel.DAMPING_KRAUS_OPERATOR, GateType.CNOT_GATE, p, [
+        [qubits[i], qubits[i + 1]] for i in range(len(qubits) - 1)
+    ])
+
+qlayer = NoiseQuantumLayer(
+    circuit, 24, "noise", 1, 1,
+    diff_method="parameter_shift",
+    delta=0.01,
+    noise_set_config=my_noise_config,
+)
+input = QTensor([[0.0, 1.0, 1.0, 1.0]])
+rlt = qlayer(input)
+grad = QTensor(np.ones(rlt.data.shape) * 1000)
+rlt.backward(grad)
+print(qlayer.m_para.grad)
+```
+
+---
+
 ## 测量函数
 
 ### ProbsMeasure
@@ -398,8 +587,10 @@ cir = hea.create_ansatz(params)
 4. **梯度计算开销**: parameter-shift 需要额外运行 `para_num × batch_size × input_dim` 次电路
 5. **AmplitudeEmbedding 未归一化**: 输入特征必须手动归一化 (`x / np.linalg.norm(x)`), L2 norm 必须为 1; 特征数必须 ≤ 2^n_qubits
 6. **HardwareEfficientAnsatz 参数遗漏**: 必须调用 `get_para_num()` 获取参数总数, 再用 `create_ansatz(params)` 传入参数张量; 不能调用无参的 `create_ansitz()`
+7. **VQCQCloudLayer QMachine 配置**: QMachine 必须设置 `save_ir=True`；VQC 模块不支持 MeasureAll，改用 `pauli_str_dict`
+8. **NoiseQuantumLayer machine_type**: 目前仅支持 `"noise"` 类型；函数签名须包含 `(input, param, qubits, cbits, m_machine)` 五个参数
+9. **QuantumLayerV3 CRX/CRY/CRZ 梯度**: 使用特殊公式计算，参考 https://iopscience.iop.org/article/10.1088/1367-2630/ac2cb3
 
 ---
 
-**Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/qnn_pq3.rst
+**Version**: VQNet 2.18.1
