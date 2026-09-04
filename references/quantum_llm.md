@@ -1,6 +1,5 @@
 # 量子大模型微调 API Reference
 
-> 来源: VQNET2.0-tutorial/source/rst/llm.rst
 > **重要**: 需要 pyvqnet >= 2.15.0
 
 ---
@@ -217,4 +216,3 @@ sh cli.sh
 ---
 
 **Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/llm.rst

@@ -1,11 +1,11 @@
-# Quantum Circuit Templates and Gates API Reference
+# Quantum Circuit Templates and Gates API Reference (v2.18.1)
 
 ## Embedding Circuits
 
 ### AmplitudeEmbeddingCircuit
 
 ```python
-pyvqnet.qnn.pq3.template.AmplitudeEmbeddingCircuit(input_feat, qubits)
+pyvqnet.qnn.pq3.template.AmplitudeEmbeddingCircuit(input_feat, qlist)
 ```
 
 **Description:**
@@ -13,7 +13,7 @@ Encodes `2^n` features into the amplitude of `n` qubits. The L2 norm of features
 
 **Parameters:**
 - `input_feat` - `np.ndarray` - Feature array
-- `qubits` - List[int] - Quantum qubit indices
+- `qlist` - List[int] - Quantum qubit indices
 - **Returns:** `pyqpanda3.QCircuit`
 
 **Example:**
@@ -28,6 +28,66 @@ qlist = range(2)
 m_prog = pq.QProg()
 cir = AmplitudeEmbeddingCircuit(input_feat, qlist)
 m_prog << cir
+```
+
+---
+
+### BasisState
+
+```python
+pyvqnet.qnn.pq3.template.BasisState(basis_state, wires, qubits)
+```
+
+**Description:**
+Prepares a basis state on the given wires using a sequence of Pauli-X gates.
+
+**Parameters:**
+- `basis_state` - `list[int]` - Binary array of 0s and 1s representing the state
+- `wires` - `list[int]` - Qubit wires that the template acts on
+- `qubits` - `list[int]` - All qubit indices in the system
+- **Returns:** `pyqpanda3.QCircuit`
+
+**Example:**
+```python
+import pyqpanda3.core as pq
+from pyvqnet.qnn.pq3.template import BasisState
+
+qlist = range(3)
+cir = BasisState([1, 0, 1], wires=[0, 1, 2], qubits=qlist)
+print(cir)
+```
+
+---
+
+### FermionicSimulationGate
+
+```python
+pyvqnet.qnn.pq3.template.FermionicSimulationGate(qlist_1, qlist_2, theta, phi)
+```
+
+**Description:**
+Fermionic Simulation Gate (FSim). Applies the unitary:
+
+```
+[ 1        0            0         0     ]
+[ 0    cos(θ)    -i·sin(θ)       0     ]
+[ 0   -i·sin(θ)    cos(θ)        0     ]
+[ 0        0            0      e^{iφ}  ]
+```
+
+**Parameters:**
+- `qlist_1` - First qubit index
+- `qlist_2` - Second qubit index
+- `theta` - First parameter for the gate (rotation angle)
+- `phi` - Second parameter for the gate (phase)
+- **Returns:** `pyqpanda3.QCircuit`
+
+**Example:**
+```python
+from pyvqnet.qnn.pq3.template import FermionicSimulationGate
+
+cir = FermionicSimulationGate(0, 1, 0.2, 0.5)
+print(cir)
 ```
 
 ---
@@ -65,7 +125,7 @@ print(circuit)
 ```python
 pyvqnet.qnn.pq3.template.AngleEmbeddingCircuit(
     input_feat,
-    qubits,
+    qlist,
     rotation: str = 'X'
 )
 ```
@@ -75,7 +135,7 @@ Encodes N features into rotation angles on n qubits, where `N ≤ n`. Each featu
 
 **Parameters:**
 - `input_feat` - `np.ndarray` - Feature array
-- `qubits` - List[int] - Qubit indices
+- `qlist` - List[int] - Qubit indices
 - `rotation` - `str` - Rotation axis: 'X', 'Y', or 'Z', default: 'X'
 - **Returns:** `pyqpanda3.QCircuit`
 
@@ -104,7 +164,7 @@ print(C)
 ```python
 pyvqnet.qnn.pq3.template.IQPEmbeddingCircuits(
     input_feat,
-    qubits,
+    qlist,
     rep: int = 1
 )
 ```
@@ -114,7 +174,7 @@ Instantaneous Quantum Polynomial (IQP) embedding as proposed by Havlicek et al. 
 
 **Parameters:**
 - `input_feat` - `np.ndarray` - Feature array
-- `qubits` - List[int] - Qubit indices
+- `qlist` - List[int] - Qubit indices
 - `rep` - `int` - Number of repetitions of the basic IQP block, default: 1
 - **Returns:** `pyqpanda3.QCircuit`
 
@@ -138,7 +198,7 @@ print(circuit)
 ### RotCircuit
 
 ```python
-pyvqnet.qnn.pq3.template.RotCircuit(para, qubits)
+pyvqnet.qnn.pq3.template.RotCircuit(para, qlist)
 ```
 
 **Description:**
@@ -152,7 +212,7 @@ Arbitrary single-qubit rotation: `R(φ, θ, ω) = RZ(ω) RY(θ) RZ(φ)`
 
 **Parameters:**
 - `para` - `np.ndarray` - `[φ, θ, ω]` parameters
-- `qubits` - `int` - Single qubit index (must be 1 qubit)
+- `qlist` - `int` - Single qubit index (must be 1 qubit)
 - **Returns:** `pyqpanda3.QCircuit`
 
 **Example:**
@@ -171,7 +231,7 @@ print(c)
 ### CRotCircuit
 
 ```python
-pyvqnet.qnn.pq3.template.CRotCircuit(para, control_qubits, rot_qubits)
+pyvqnet.qnn.pq3.template.CRotCircuit(para, control_qlists, rot_qlists)
 ```
 
 **Description:**
@@ -187,8 +247,8 @@ Controlled arbitrary single-qubit rotation.
 
 **Parameters:**
 - `para` - `np.ndarray` - `[φ, θ, ω]` parameters
-- `control_qubits` - `List[int]` - Control qubit (must be 1 qubit)
-- `rot_qubits` - `List[int]` - Target rotation qubit (must be 1 qubit)
+- `control_qlists` - `List[int]` - Control qubit (must be 1 qubit)
+- `rot_qlists` - `List[int]` - Target rotation qubit (must be 1 qubit)
 - **Returns:** `pyqpanda3.QCircuit`
 
 **Example:**
@@ -211,7 +271,7 @@ print(cir)
 ### CSWAPcircuit
 
 ```python
-pyvqnet.qnn.pq3.template.CSWAPcircuit(qubits)
+pyvqnet.qnn.pq3.template.CSWAPcircuit(qlists)
 ```
 
 **Description:**
@@ -225,7 +285,7 @@ CSWAP = I_controls ⊕ SWAP when control=1
 ```
 
 **Parameters:**
-- `qubits` - `List[int]` - Qubit indices. First qubit is control, total length must be 3.
+- `qlists` - `List[int]` - Qubit indices. First qubit is control, total length must be 3.
 - **Returns:** `pyqpanda3.QCircuit`
 
 **Example:**
@@ -527,7 +587,7 @@ print(cir)
 pyvqnet.qnn.pq3.template.BasicEntanglerTemplate(
     weights=None,
     num_qubits=1,
-    rotation=pyqpanda.RX
+    rotation=pq.RX
 )
 ```
 
@@ -537,7 +597,7 @@ Basic entangling template: each layer consists of single-qubit rotations followe
 **Parameters:**
 - `weights` - `np.ndarray` - Shape `(L, len(qubits))`. Each weight is a parameter for a rotation gate. Default: `None` uses `(1, 1)` random normal.
 - `num_qubits` - `int` - Number of qubits, default: 1
-- `rotation` - Single-parameter single-qubit gate class, default: `pyqpanda.RX`
+- `rotation` - Single-parameter single-qubit gate class, default: `pq.RX` (pyqpanda3.core.RX)
 
 **Methods:**
 - `create_circuit(qubits)` - Builds and returns the quantum circuit
@@ -605,10 +665,10 @@ circuit.print_circuit(qubits)
 
 ---
 
-### ComplexEntangelingTemplate
+### ComplexEntanglingTemplate
 
 ```python
-pyvqnet.qnn.pq3.ComplexEntangelingTemplate(
+pyvqnet.qnn.pq3.ComplexEntanglingTemplate(
     weights,
     num_qubits,
     depth
@@ -626,7 +686,7 @@ Complex entangling template with U3 single-qubit gates and CNOT entangling layer
 
 **Example:**
 ```python
-from pyvqnet.qnn.pq3 import ComplexEntangelingTemplate
+from pyvqnet.qnn.pq3 import ComplexEntanglingTemplate
 import pyqpanda3.core as pq
 from pyvqnet.tensor import *
 
@@ -637,7 +697,7 @@ weights = randn(shape)
 
 machine = pq.CPUQVM()
 qubits = range(num_qubits)
-circuit = ComplexEntangelingTemplate(weights, num_qubits=num_qubits, depth=depth)
+circuit = ComplexEntanglingTemplate(weights, num_qubits=num_qubits, depth=depth)
 result = circuit.create_circuit(qubits)
 circuit.print_circuit(qubits)
 ```
@@ -648,7 +708,7 @@ circuit.print_circuit(qubits)
 
 ```python
 pyvqnet.qnn.pq3.Quantum_Embedding(
-    qubits,
+    num_qubits,
     machine,
     num_repetitions_input,
     depth_input,
@@ -661,7 +721,7 @@ pyvqnet.qnn.pq3.Quantum_Embedding(
 Variational quantum embedding for encoding classical data into quantum states, as described in "Quantum embeddings for machine learning" (arXiv:2001.03622). Uses RZ-RY-RZ construction to create a variational circuit that embeds classical data.
 
 **Parameters:**
-- `qubits` - Number of qubits allocated from pyqpanda
+- `num_qubits` - Number of qubits allocated from pyqpanda
 - `machine` - Quantum VM from pyqpanda
 - `num_repetitions_input` - Number of repetitions for encoding input
 - `depth_input` - Input feature dimension
@@ -673,7 +733,7 @@ Variational quantum embedding for encoding classical data into quantum states, a
 
 **Example:**
 ```python
-from pyvqnet.qnn.pq3 import QpandaQCircuitVQCLite, Quantum_Embedding
+from pyvqnet.qnn.pq3 import QpandaQCircuitVQCLayerLite, Quantum_Embedding
 from pyvqnet.tensor import tensor
 import pyqpanda3.core as pq
 
@@ -692,7 +752,7 @@ data_in.requires_grad = True
 
 qe = Quantum_Embedding(nq, local_machine, num_repetitions_input,
                         depth_input, num_unitary_layers, num_repetitions)
-qlayer = QpandaQCircuitVQCLite(qe.compute_circuit, qe.param_num)
+qlayer = QpandaQCircuitVQCLayerLite(qe.compute_circuit, qe.param_num)
 
 y = qlayer.forward(data_in)
 y.backward()

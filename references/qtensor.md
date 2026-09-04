@@ -1,6 +1,5 @@
 # QTensor API Reference
 
-> 来源: VQNET2.0-tutorial/source/rst/QTensor.rst
 > **重要**: 所有示例代码均来自官方文档，可直接运行。
 
 ---
@@ -520,4 +519,3 @@ print(c)
 ---
 
 **Version**: VQNet 2.0
-**Source**: VQNET2.0-tutorial/source/rst/QTensor.rst

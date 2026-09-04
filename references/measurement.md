@@ -1,9 +1,9 @@
-# Measurement Functions API Reference
+# Measurement Functions API Reference (v2.18.1)
 
 ## expval
 
 ```python
-pyvqnet.qnn.pq3.measure.expval(machine, prog, pauli_str_dict)
+pyvqnet.qnn.pq3.measure.expval(machine, prog, pauli_str_dict, shots=1000, noise_model=None)
 ```
 
 **Description:**
@@ -15,9 +15,11 @@ For a Hamiltonian `0.7 Z0⊗X1⊗I2 + 0.2 I0⊗Z1⊗I2`, the dictionary looks li
 Supports pyqpanda3 CPU and GPU simulators.
 
 **Parameters:**
-- `machine` - Quantum virtual machine created by pyqpanda
+- `machine` - Quantum virtual machine created by pyqpanda (CPUQVM or GPUQVM)
 - `prog` - Quantum program created by pyqpanda
 - `pauli_str_dict` - Dictionary mapping Pauli strings to coefficients
+- `shots` - `int` - Number of measurement shots, default: 1000
+- `noise_model` - `pyqpanda3.core.NoiseModel` - Noise model to apply, default: None (ideal)
 - **Returns:** Expectation value (float)
 
 **Example:**
@@ -50,21 +52,23 @@ pyvqnet.qnn.pq3.measure.QuantumMeasure(
     prog,
     measure_qubits: list,
     shots: int = 1000,
-    qcloud_option=""
+    qcloud_option="",
+    noise_model=None
 )
 ```
 
 **Description:**
 Performs quantum measurement using Monte Carlo method. Returns measurement outcome counts.
 
-Only supports `CPUQVM` and `QCloud`.
+Supports `CPUQVM`, `GPUQVM`, and `QCloud`.
 
 **Parameters:**
-- `machine` - Quantum VM allocated by pyQPanda
+- `machine` - Quantum VM allocated by pyQPanda (CPUQVM, GPUQVM, or QCloudBackend)
 - `prog` - Quantum program created by pyQPanda
 - `measure_qubits` - `list[int]` - List of measured qubit indices
 - `shots` - `int` - Number of measurement shots, default: 1000
 - `qcloud_option` - `QCloudOptions` - QCloud configuration, only used with QCloud, default: ""
+- `noise_model` - `pyqpanda3.core.NoiseModel` - Noise model to apply, default: None (ideal)
 - **Returns:** Measurement results (dictionary with outcome counts)
 
 **Example:**
@@ -92,20 +96,22 @@ pyvqnet.qnn.pq3.measure.ProbsMeasure(
     machine,
     prog,
     measure_qubits: list,
-    shots=1
+    shots=1,
+    noise_model=None
 )
 ```
 
 **Description:**
 Computes probability measurement. For `shots=1` (default), computes the theoretical probability distribution.
 
-Only supports `CPUQVM` and `QCloud`.
+Supports `CPUQVM` and `GPUQVM`.
 
 **Parameters:**
-- `machine` - pyQPanda quantum VM
+- `machine` - pyQPanda quantum VM (CPUQVM or GPUQVM)
 - `prog` - Quantum program created by pyQPanda
 - `measure_qubits` - `list[int]` - List of measured qubit indices
 - `shots` - `int` - Number of measurement shots, default: 1 (theoretical calculation)
+- `noise_model` - `pyqpanda3.core.NoiseModel` - Noise model to apply, default: None (ideal)
 - **Returns:** Probability array in lex order of measured qubits
 
 **Example:**
@@ -264,4 +270,34 @@ qstate = [
 pp = Purity(qstate, [1])
 print(pp)
 # 0.902503479761881
+```
+
+---
+
+## Hermitian_expval
+
+```python
+pyvqnet.qnn.pq3.measure.Hermitian_expval(H, state, wires, num_wires, shots=0)
+```
+
+**Description:**
+Computes the expectation value of an arbitrary Hermitian observable on a given quantum state.
+
+**Parameters:**
+- `H` - `np.ndarray` or `QTensor` - Hermitian matrix representing the observable
+- `state` - `np.ndarray` - Full quantum state vector
+- `wires` - `list[int]` - Qubit wires the observable acts on
+- `num_wires` - `int` - Total number of qubits in the system
+- `shots` - `int` - Number of measurement shots, default: 0 (analytic calculation)
+- **Returns:** `float` - Expectation value of the Hermitian observable
+
+**Example:**
+```python
+from pyvqnet.qnn.pq3.measure import Hermitian_expval
+import numpy as np
+
+H = np.array([[1, 0], [0, -1]])  # Pauli Z
+qstate = [1+0j, 0+0j]  # |0⟩ state
+result = Hermitian_expval(H, qstate, [0], 1)
+print(result)  # 1.0
 ```

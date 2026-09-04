@@ -1,4 +1,4 @@
-# Quantum Neural Networks (QNN) Reference
+# Quantum Neural Networks (QNN) Reference (v2.18.1)
 
 ## Overview
 
@@ -81,6 +81,7 @@ optimizer.step()
 | `QpandaQProgVQCLayer` | `pyvqnet.qnn.pq3.quantumlayer` | Layer that accepts QProg return |
 | `QuantumBatchAsyncQcloudLayer` | `pyvqnet.qnn.pq3.quantumlayer` | Run on QCloud real hardware |
 | `QuantumLayerAdjoint` | `pyvqnet.qnn.pq3.quantumlayer` | Adjoint gradient method for VQE |
+| `NoiseQuantumLayer` | `pyvqnet.qnn.pq3.quantumlayer` | Quantum layer with noise model support |
 | `QLinear` | `pyvqnet.qnn.qlinear` | Quantum fully-connected layer |
 | `QConv` | `pyvqnet.qnn.qcnn.qconv` | Quantum convolution layer |
 | Embedding templates | `pyvqnet.qnn.pq3.template` | AmplitudeEmbedding, AngleEmbedding, IQP |
