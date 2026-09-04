@@ -69,6 +69,14 @@ git clone https://github.com/OriginQ/pyvqnet-skills.git
 | Codex | `~/.codex/skills/` | `<project>/.codex/skills/` |
 | Cline | `~/.cline/skills/` | 仅全局 |
 
+也可以使用仓库根目录的安装脚本一键安装：
+
+```bash
+bash install.sh --claude                 # 安装到 Claude Code（全局）
+bash install.sh --opencode --project     # 安装到当前项目的 OpenCode 技能目录
+bash install.sh --all                    # 安装到全部支持工具（全局）
+```
+
 以 Claude Code 全局安装为例：
 
 ```bash
