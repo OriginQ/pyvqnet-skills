@@ -51,8 +51,8 @@ def quantum_circuit(input_data, params):
 model = Sequential(
     Linear(8, 4),        # Classical: 8 -> 4
     ReLU(),
-    QuantumLayer(quantum_circuit, 8),  # Quantum: 4 -> 4
-    Linear(4, 2)         # Output: 2 classes
+    QuantumLayer(quantum_circuit, 8),  # Quantum: 4 qubits -> 2^4 = 16 probabilities
+    Linear(16, 2)        # Output: 2 classes
 )
 
 # Setup optimizer and loss
