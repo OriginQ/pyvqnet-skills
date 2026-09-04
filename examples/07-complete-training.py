@@ -12,14 +12,14 @@
 关键点：
 - VQNet 损失函数参数顺序：(标签, 预测值)，与 PyTorch 相反
 - CrossEntropy 标签需要 dtype=kint64
-- 使用 optimizer._step() 而非 step()
+- 优化器更新使用 optimizer._step()（与 step() 等价，两者均可）
 """
 
 import numpy as np
 from pyvqnet.nn import Module, Linear, ReLU, Sequential, Dropout
 from pyvqnet.nn import CrossEntropyLoss, MeanSquaredError
 from pyvqnet.optim import Adam, SGD
-from pyvqnet.tensor import QTensor, ones, zeros, randn
+from pyvqnet.tensor import QTensor, ones, zeros, randn, softmax
 from pyvqnet import kint64, kfloat32
 from pyvqnet.utils import set_random_seed
 
@@ -106,7 +106,7 @@ def train_epoch(model, optimizer, loss_fn, X_train, y_train, batch_size):
         loss.backward()
 
         # 参数更新
-        optimizer._step()  # 注意：是 _step() 而非 step()
+        optimizer._step()  # _step() 与 step() 等价
 
         # 统计
         total_loss += loss.item() * len(batch_y)
@@ -223,11 +223,13 @@ def main():
     print("=== 测试单个样本 ===")
     test_x = QTensor([[0.8, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]])
     model.eval()
-    pred = model(test_x)
-    pred_label = np.argmax(pred.to_numpy())
+    logits = model(test_x)
+    # model 输出是 logits，需要 softmax 才是概率
+    probs = softmax(logits, dim=-1)
+    pred_label = int(np.argmax(probs.to_numpy()))
     print(f"输入: {test_x.to_numpy()}")
     print(f"预测类别: {pred_label}")
-    print(f"预测概率: {pred.to_numpy()}")
+    print(f"预测概率: {probs.to_numpy()}")
     print()
 
     # 关键要点总结
@@ -243,7 +245,7 @@ def main():
     print("   y = QTensor(batch_y, dtype=kint64)")
     print()
     print("3. 优化器更新使用 optimizer._step()")
-    print("   - 不是 step()，是 _step()")
+    print("   - _step() 与 step() 均可正常更新参数，效果等价")
     print()
     print("4. 训练前调用 optimizer.zero_grad()")
     print("5. 调用 loss.backward() 计算梯度")
