@@ -56,8 +56,17 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 将仓库克隆到本地，然后把技能目录复制（或软链接）到你所用的 AI 工具对应技能目录即可：
 
 ```bash
+# 1. 克隆仓库
 git clone https://github.com/OriginQ/pyvqnet-skills.git
+
+# 2. 复制（或软链接）到技能目录 —— 以 Claude Code 全局安装为例
+cp -r pyvqnet-skills ~/.claude/skills/pyvqnet-skills
+
+# 或者用软链接，方便后续同步更新
+ln -s "$PWD/pyvqnet-skills" ~/.claude/skills/pyvqnet-skills
 ```
+
+目标目录名即技能加载名（仓库自带的 `install.sh` 统一使用 `pyvqnet-skills`）。
 
 **技能目录对照表**：
 
@@ -77,14 +86,7 @@ bash install.sh --opencode --project     # 安装到当前项目的 OpenCode 技
 bash install.sh --all                    # 安装到全部支持工具（全局）
 ```
 
-以 Claude Code 全局安装为例：
-
-```bash
-# Copy to Claude Code skills directory
-cp -r pyvqnet-skills ~/.claude/skills/vqnet2-api
-```
-
-其他工具同理：将仓库复制到上表对应的技能目录下即可，目录名即技能加载名。
+其他工具同理：把上面第 2 步的目标目录替换为上表对应路径即可，目录名即技能加载名。
 
 ### Requirements for VQNet Development
 
@@ -166,7 +168,7 @@ model = Linear(10, 5)
 optimizer = Adam(model.parameters(), lr=0.01)
 loss_fn = CrossEntropyLoss()
 
-x = QTensor([[0.1, ...]], requires_grad=True)
+x = QTensor([[0.1, 0.2, 0.3, 0.4]], requires_grad=True)
 y = QTensor([0], dtype=kint64)  # 标签必须是 kint64
 
 pred = model(x)
@@ -174,7 +176,7 @@ loss = loss_fn(y, pred)  # 注意：VQNet 是 (标签, 预测值)
 
 optimizer.zero_grad()
 loss.backward()
-optimizer._step()  # 注意：是 _step() 而非 step()
+optimizer._step()  # _step() 与 step() 均可用，两者等价
 ```
 
 ## Critical API Patterns
@@ -184,16 +186,17 @@ optimizer._step()  # 注意：是 _step() 而非 step()
 | QuantumLayer 签名 | `(input, param)` | - |
 | 损失函数参数 | `(y_true, y_pred)` | `(y_pred, y_true)` |
 | CrossEntropy 标签 dtype | `kint64` | `torch.long` |
-| 优化器更新 | `optimizer._step()` | `optimizer.step()` |
+| 优化器更新 | `optimizer._step()` 或 `optimizer.step()`（等价） | `optimizer.step()` |
 | VQC forward | 必须调用 `reset_states(batchsize)` | - |
 
 ## Project Structure
 
 ```
-vqnet2-skill/
-├── SKILL.md                      # Core skill - 12-layer skill system
+pyvqnet-skills/
+├── SKILL.md                      # Core skill - 17 skills in 4 layers
 ├── CLAUDE.md                     # AI assistant guide
 ├── README.md                     # This file
+├── install.sh                    # 一键安装到各 AI 工具技能目录
 ├── examples/                     # Working example scripts
 │   ├── 01-qtensor-basics.py
 │   ├── 02-quantum-layer.py
@@ -226,16 +229,16 @@ vqnet2-skill/
 | `def circuit(param, input)` | Use `(input, param)` |
 | `loss_fn(pred, y)` | Use `loss_fn(y, pred)` |
 | Labels as `kfloat32` | Use `kint64` for CrossEntropy |
-| `optimizer.step()` | Use `optimizer._step()` |
+| 误以为 `optimizer.step()` 不可用 | `_step()` 和 `step()` 都能正常更新参数，任选其一 |
 | Missing `reset_states` | Call `device.reset_states(batchsize)` in forward |
 | Python `list` for submodules | Use `ModuleList` |
 | Hardcoded QCloud token | Use `os.getenv("QCLOUD_TOKEN")` |
 
 ## Links
 
-- [Official VQNet Documentation](https://vqnet2-tutorial.readthedocs.io/)
-- [Origin Quantum](https://www.originqc.com.cn/)
-- [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/qpanda-3/index.html)
+- [Official VQNet Documentation](https://qcloud.originqc.com.cn/document/vqnet_api_cn/index.html#)
+- [Origin Quantum](https://originqc.com/)
+- [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/)
 - [Origin Quantum Cloud](https://qcloud.originqc.com.cn/)
 
 ## License
@@ -244,4 +247,4 @@ Apache License 2.0
 
 ## Credits
 
-Based on official VQNet 2.0 documentation from Origin Quantum.
+Based on official VQNet 2.18.1 documentation from Origin Quantum.

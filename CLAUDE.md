@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.0 (PyVQNet) with pyqpanda3. Provides complete API reference extracted from official documentation.
+**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.18.1 (PyVQNet) with pyqpanda3. Provides complete API reference extracted from official documentation.
 
-**Primary Framework**: VQNet 2.0 (PyVQNet) with pyqpanda3 for quantum computing.
+**Primary Framework**: VQNet 2.18.1 (PyVQNet) with pyqpanda3 for quantum computing.
 
-**Target Users**: AI assistants (Claude/Cline) helping users with quantum machine learning using VQNet 2.0.
+**Target Users**: AI assistants (Claude/Cline) helping users with quantum machine learning using VQNet 2.18.1.
 
 **License**: Apache 2.0
 
@@ -46,40 +46,51 @@ Use this skill when user mentions:
 | 安装/环境/FAQ | `references/install_env.md` |
 | QTensor API | `references/qtensor.md` |
 | 经典神经网络 (Module, Linear, Conv, Loss, Optimizer) | `references/classic_nn.md` |
+| 工具函数 (随机种子/初始化器) | `references/utils.md` |
 | QuantumLayer (pyqpanda3) | `references/quantum_layers.md` |
 | VQC 自动微分模块 | `references/vqc.md` |
+| 量子测量与熵函数 | `references/measurement.md` |
+| QNN 架构总览与最佳实践 | `references/qnn.md` |
+| 量子电路模板与拟设 | `references/quantum_templates.md` |
 | QML Demo 示例 | `references/qml_demos.md` |
 | 分布式训练 | `references/distributed.md` |
 | 量子大模型微调 | `references/quantum_llm.md` |
 | PyTorch 后端切换 | `references/torch_api.md` |
-| 量子测量与熵函数 | `references/measurement.md` |
-| QNN 架构总览与最佳实践 | `references/qnn.md` |
-| 量子电路模板与拟设 | `references/quantum_templates.md` |
-| 工具函数 (随机种子/初始化器) | `references/utils.md` |
+| 大模型算子与 trl 微调损失 | `references/llm_ops.md` |
 
 ---
 
 ## Project Structure
 
 ```
-vqnet2-skill/
+pyvqnet-skills/
 ├── SKILL.md                      # Core skill definition (分层体系)
 ├── CLAUDE.md                     # This file - AI assistant guide
 ├── README.md                     # Human-readable README
+├── install.sh                    # 一键安装到各 AI 工具技能目录
+├── examples/                     # 可直接运行的示例脚本
+│   ├── 01-qtensor-basics.py
+│   ├── 02-quantum-layer.py
+│   ├── 03-qnn-classification.py
+│   ├── 04-pytorch-backend.py
+│   ├── 05-vqc-autodiff.py
+│   ├── 06-gpu-training.py
+│   └── 07-complete-training.py
 └── references/                   # API reference documentation
     ├── install_env.md           # 安装、环境配置、FAQ
     ├── qtensor.md               # QTensor 完整 API
     ├── classic_nn.md            # Module, Linear, Conv2D, Loss, Optimizer
+    ├── utils.md                 # 随机种子 / 初始化器
     ├── quantum_layers.md        # QuantumLayer, QpandaQProgVQCLayer
     ├── vqc.md                   # VQC 自动微分 API
-    ├── qml_demos.md             # QVC, QDRL, Quanvolution 示例
-    ├── distributed.md           # MPI/NCCL 分布式训练
-    ├── quantum_llm.md           # 量子大模型微调
-    ├── torch_api.md             # PyTorch 后端切换
     ├── measurement.md           # 量子测量与熵函数
     ├── qnn.md                   # QNN 架构总览与最佳实践
     ├── quantum_templates.md     # 量子电路模板与拟设
-    └── utils.md                 # 工具函数
+    ├── qml_demos.md             # QVC, QDRL, Quanvolution 示例
+    ├── distributed.md           # MPI/NCCL 分布式训练
+    ├── quantum_llm.md           # 量子大模型微调
+    ├── torch_api.md             # PyTorch 后端 / sv.torch / tn.torch
+    └── llm_ops.md               # 大模型算子 + trl 微调损失
 ```
 
 ---
@@ -192,7 +203,7 @@ AI Response Flow:
 
 ## Additional Resources
 
-- [Official VQNet Documentation](https://vqnet2-tutorial.readthedocs.io/)
-- [Origin Quantum](https://www.originqc.com.cn/)
-- [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/qpanda-3/index.html)
+- [Official VQNet Documentation](https://qcloud.originqc.com.cn/document/vqnet_api_cn/index.html#)
+- [Origin Quantum](https://originqc.com/)
+- [PyQPanda3 Documentation](https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/)
 - [Origin Quantum Cloud](https://qcloud.originqc.com.cn/)

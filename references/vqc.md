@@ -967,4 +967,4 @@ from pyvqnet.qnn.vqc import (
 
 ---
 
-**Version**: VQNet 2.18
+**Version**: VQNet 2.18.1
