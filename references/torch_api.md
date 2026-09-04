@@ -90,9 +90,10 @@ print(t.grad)
 
 ## Requirements
 
-- PyTorch version **2.4.0 ~ 2.6.0** is required
-- If using GPU PyTorch, CUDA 11.8 compatible version is required
-- VQNet does **not** install PyTorch automatically - users must install it themselves
+- PyTorch **2.11.0** is required. VQNet does **not** install PyTorch automatically - users must install it themselves.
+- If using GPU PyTorch, use a build compatible with **CUDA 12.6**; otherwise the NVIDIA CUDA runtime library mismatch can make PyTorch unusable.
+- VQNet itself is installed via pip, which pulls in a CUDA 12.6 based NVIDIA runtime library. Mixing it with a PyTorch built against a different CUDA version can cause runtime conflicts (e.g. GPU not detected, training errors). Using a separate virtual environment or container is recommended.
+- Optimized for CUDA architectures **sm_80** (A100/A30) and **sm_86** (RTX 30 series).
 
 ---
 
@@ -1449,7 +1450,7 @@ pip install tensornetwork
 
 ## `pyvqnet.qnn.pq3.torch` 量子层
 
-使用 pyqpanda3 进行线路计算的训练变分量子线路接口。以下接口的量子计算部分使用 pyqpanda3 <https://qcloud.originqc.com.cn/document/qpanda-3/index.html>。
+使用 pyqpanda3 进行线路计算的训练变分量子线路接口。以下接口的量子计算部分使用 pyqpanda3 <https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/>。
 
 **Warning:** 需要安装最新版本 pyqpanda3。
 
@@ -1510,6 +1511,8 @@ def qfun(input,param):
         m_prog << pq.measure(m_qlist[ele], cbits[idx])  # pylint: disable=expression-not-assigned
     return m_prog
 
+# 注意：不要在代码中硬编码 QCloud token，实际使用时请通过环境变量传入
+# l = TorchQcloud3QuantumLayer(qfun, os.getenv("QCLOUD_TOKEN"), 2, ...)
 l = TorchQcloud3QuantumLayer(qfun,
                 "your_api_token",
                 2,
@@ -1548,7 +1551,7 @@ pyvqnet.qnn.pq3.torch.qpanda3_layer.TorchQpanda3QuantumLayer(qprog_with_measure,
 - **Returns:** 一个可以计算量子线路的模块
 
 **Note:**
-`qprog_with_measure` 是 pyQPanda 中定义的量子线路函数（参见 <https://qcloud.originqc.com.cn/document/qpanda-3/db/d6c/tutorial_circuit_and_program.html>）。此函数必须包含以下参数作为函数入参（即使某个参数未实际使用），否则无法在本函数中正常运行：`input` 输入一维经典数据，如果没有输入 None；`param` 输入一维的变分量子线路的待训练参数。
+`qprog_with_measure` 是 pyQPanda 中定义的量子线路函数（参见 <https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/>）。此函数必须包含以下参数作为函数入参（即使某个参数未实际使用），否则无法在本函数中正常运行：`input` 输入一维经典数据，如果没有输入 None；`param` 输入一维的变分量子线路的待训练参数。
 
 **Example:**
 ```python
@@ -1711,6 +1714,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = CrossEntropyLoss()
 
 # Training loop — pure PyTorch
+# Note: torch.optim.Adam is a PyTorch optimizer, so it uses step() (not _step())
 for epoch in range(10):
     # x: QTensor wrapping torch.Tensor, y: QTensor with dtype=kint64
     logits = model(x)
@@ -1720,3 +1724,7 @@ for epoch in range(10):
     loss.backward()
     optimizer.step()
 ```
+
+---
+
+**Version**: VQNet 2.18.1
