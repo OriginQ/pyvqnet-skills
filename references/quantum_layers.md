@@ -291,6 +291,295 @@ print(qmodel.u1.params.grad)
 
 ---
 
+## VQCLayer（统一量子层）
+
+> 2.18.2 新增。VQCLayer 将包含 QMachine 的 VQC Module 包装为可训练的量子层，通过 `submit_kwargs["backend"]` 选择执行后端。
+
+```python
+pyvqnet.qnn.pq3.vqclayer.VQCLayer(
+    vqc_module,
+    qcloud_token=None,
+    shots=1000,
+    diff_method="parameter_shift",
+    submit_kwargs=None,
+    query_kwargs=None,
+    name="",
+)
+```
+
+### 执行后端
+
+通过 `submit_kwargs["backend"]` 选择：
+
+| 后端 | 说明 |
+|------|------|
+| `vqnet_native`（默认） | VQNet 本地 autograd 梯度，不提交线路 |
+| `qcloud_fake` | 提交到本地 pyqpanda3 QVM（FakeBackend），参数移位法梯度 |
+| `qpanda_runtime` | 提交到 qpanda3_runtime 真实芯片 |
+| `qcloud_service` | 提交到 QCloud 真实芯片 |
+
+### 测量方式（互斥）
+
+- `submit_kwargs["pauli_str_dict"]`：期望值测量
+- `query_kwargs["measure_qubits"]`：概率测量
+
+同时指定或都不指定会抛出 `ValueError`。
+
+### 经典影子测量（Classical Shadow）
+
+`submit_kwargs["shadow_config"]` 控制期望值测量方案（需配合 `pauli_str_dict`）：
+
+| shadow_config | 模式 | shots 语义 | 说明 |
+|---------------|------|-----------|------|
+| 0（默认） | 完整测量 | 传统 MeasureAll | 精确期望值 |
+| 1 | 随机经典影子 | shots = 总快照数 T | 每个快照电路运行 1 shot（PennyLane 惯例） |
+| 2 | 去随机化经典影子 | shots = 调度长度 N | 贪心调度生成 N 个电路，每个 1 shot |
+
+`submit_kwargs["shadow_seed"]`：固定影子配方种子（默认随机，层生命周期内固定 → 训练可复现）。
+
+**约束**：
+- `shadow_config != 0` 必须同时提供 `pauli_str_dict`
+- `shadow_config != 0` 不支持 `qpanda_runtime` 后端（抛 ValueError）
+- 支持后端：`vqnet_native`、`qcloud_fake`、`qcloud_service`
+- 梯度路径不变：始终使用 mode-0 精确参数移位法（E[shadow] = exact）
+
+### 噪声模型（pyqpanda3 0.4.0）
+
+`submit_kwargs["noise_model"]`：传入 `QCloudNoiseModel` 实例，本地 CPUQVM 生成逼真噪声结果。
+
+```python
+from pyqpanda3.qcloud import QCloudNoiseModel
+
+noise = QCloudNoiseModel(chip_id="WK_C180")
+layer = VQCLayer(
+    model,
+    submit_kwargs={
+        "backend": "qcloud_fake",
+        "pauli_str_dict": {"Z0 Z1": 1},
+        "noise_model": noise,
+        "test_qcloud_fake": True,
+    },
+)
+```
+
+**约束**：
+- `qcloud_fake` 后端：noise_model 传入本地 CPUQVM，生成带噪声的模拟结果
+- `qcloud_service` 后端：noise_model 类型必须是 `QCloudNoiseModel`（`core.NoiseModel` 仅用于 qcloud_fake）；chip_id 必须是云模拟器（`full_amplitude`/`partial_amplitude`/`single_amplitude`），真机芯片 + 云噪声抛 ValueError
+
+### 日志与配置透传（pyqpanda3 0.4.0）
+
+| submit_kwargs 键 | 说明 |
+|-------------------|------|
+| `log_file` | 日志输出到文件（通过 `LogOutput.FILE`），与 `if_print_qcloud_log` 互斥，FILE 优先 |
+| `point_label` | 透传到云后端提交 JSON，默认 1 |
+| `enable_binary_encoding` | 启用二进制编码提交，默认 False |
+| `is_optimization` | 是否线路优化，本地 CPUQVM 返回伪优化结果，默认 True |
+
+### 完整 submit_kwargs 键表
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `backend` | str | `"vqnet_native"` | 执行后端 |
+| `pauli_str_dict` | dict | None | 期望值测量（与 measure_qubits 互斥） |
+| `shadow_config` | int | 0 | 影子测量模式：0/1/2 |
+| `shadow_seed` | int | 随机 | 影子配方种子 |
+| `noise_model` | QCloudNoiseModel | None | 噪声模型 |
+| `log_file` | str | `""` | 日志文件路径 |
+| `point_label` | int | 1 | 云后端点标签 |
+| `enable_binary_encoding` | bool | False | 二进制编码 |
+| `is_amend` | bool | True | 纠错 |
+| `is_mapping` | bool | True | 逻辑-物理映射 |
+| `is_optimization` | bool | True | 线路优化 |
+| `chip_id` | str | `"WK_C180"` | 芯片 ID |
+| `set_specified_block` | list | [] | 指定芯片块 |
+| `default_task_group_size` | int | 200 | 任务分组大小 |
+| `test_qcloud_fake` | bool | False | 本地模拟器干跑（qcloud_fake 强制 True） |
+| `fake_async_delay` | float | None | 模拟器异步延迟秒数 |
+| `print_ir` | bool | False | 打印 OriginIR |
+| `server_ip_address` | str | `""` | QCloud 服务器地址 |
+| `use_qwc` | bool | True | QWC 任务分组 |
+| `streaming` | bool | False | 流式梯度（提交-收缩重叠） |
+| `block_b` / `block_o` / `block_k` | int | 0 | 块化收缩维度（0 不启用） |
+
+### query_kwargs 键表
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `measure_qubits` | list | None | 概率测量量子比特（与 pauli_str_dict 互斥） |
+| `total_timeout` | int | 60 | 总超时秒数（本地模拟器 3600） |
+| `timeout` | int | 1 | 单次查询超时（本地模拟器 0.01） |
+| `print_query_info` | bool | False | 打印查询信息 |
+| `sub_circuits_split_size` | int | 1 | 子线路拆分大小 |
+
+### 示例：vqnet_native + 完整测量
+
+```python
+import pyvqnet
+from pyvqnet import nn
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc import QMachine, RY
+from pyvqnet.qnn.pq3 import VQCLayer
+
+class QModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.qm = QMachine(2, save_ir=True)
+        self.ry_w = RY(trainable=True, wires=0, init_params=QTensor([[0.4]]))
+        self.ry_x = RY(trainable=False, wires=1)
+
+    def forward(self, x):
+        self.qm.reset_states(x.shape[0])
+        self.ry_w(q_machine=self.qm)
+        self.ry_x(params=x[:, [0]], q_machine=self.qm)
+        return x
+
+layer = VQCLayer(
+    QModel(),
+    submit_kwargs={"backend": "vqnet_native", "pauli_str_dict": {"Z0 Z1": 1}},
+)
+x = QTensor([[0.3], [0.7]], requires_grad=True)
+y = layer(x)
+y.backward()
+print(y)          # Z0*Z1 期望值, 形状 (2, 1)
+print(x.grad)     # d<Z0 Z1>/dx
+```
+
+### 示例：经典影子测量
+
+```python
+import pyvqnet
+from pyvqnet import nn
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc import QMachine, RY
+from pyvqnet.qnn.pq3 import VQCLayer
+
+class QModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.qm = QMachine(2, save_ir=True)
+        self.ry_w = RY(trainable=True, wires=0, init_params=QTensor([[0.4]]))
+        self.ry_x = RY(trainable=False, wires=1)
+
+    def forward(self, x):
+        self.qm.reset_states(x.shape[0])
+        self.ry_w(q_machine=self.qm)
+        self.ry_x(params=x[:, [0]], q_machine=self.qm)
+        return x
+
+# 随机经典影子 (shadow_config=1)
+layer = VQCLayer(
+    QModel(), shots=500,
+    submit_kwargs={
+        "backend": "vqnet_native",
+        "pauli_str_dict": {"Z0 Z1": 1},
+        "shadow_config": 1,
+        "shadow_seed": 42,  # 固定种子 → 训练可复现
+    },
+)
+x = QTensor([[0.3], [0.7]], requires_grad=True)
+y = layer(x)
+y.backward()
+print(x.grad)
+
+# 去随机化影子 (shadow_config=2)
+layer2 = VQCLayer(
+    QModel(), shots=500,
+    submit_kwargs={
+        "backend": "vqnet_native",
+        "pauli_str_dict": {"Z0 Z1": 1},
+        "shadow_config": 2,
+        "shadow_seed": 42,
+    },
+)
+y2 = layer2(QTensor([[0.3], [0.7]], requires_grad=True))
+```
+
+### 示例：qcloud_fake + 噪声模型
+
+```python
+from pyqpanda3.qcloud import QCloudNoiseModel
+
+noise = QCloudNoiseModel(chip_id="WK_C180")
+layer = VQCLayer(
+    QModel(),
+    shots=8000,
+    submit_kwargs={
+        "backend": "qcloud_fake",
+        "test_qcloud_fake": True,
+        "pauli_str_dict": {"Z0 Z1": 1},
+        "noise_model": noise,
+    },
+)
+x = QTensor([[0.3]], requires_grad=True)
+y = layer(x)
+y.backward()
+```
+
+---
+
+## TorchVQCLayer（torch 后端统一量子层）
+
+> 2.18.2 新增。TorchVQCLayer 是 VQCLayer 的 torch 后端版本，功能与原生 VQCLayer 一致。输入/输出为 `torch.Tensor`，需先切换到 torch 后端：`pyvqnet.backends.set_backend("torch")`。
+
+```python
+pyvqnet.qnn.pq3.torch.torchvqclayer.TorchVQCLayer(
+    vqc_module,
+    qcloud_token=None,
+    shots=1000,
+    diff_method="parameter_shift",
+    submit_kwargs=None,
+    query_kwargs=None,
+    name="",
+)
+```
+
+**与 VQCLayer 的差异**：
+- `vqc_module` 必须是 torch 后端 VQC Module（`pyvqnet.qnn.vqc.sv.torch` 构建）
+- 输入/输出为 `torch.Tensor`（前向边界自动包装）
+- `submit_kwargs` / `query_kwargs` 键与 VQCLayer 完全一致
+- 经典影子（shadow_config）、噪声模型、日志/配置透传均支持
+- 梯度路径：torch 后端 autograd（vqnet_native）或参数移位法（提交后端）
+
+### 示例：torch 后端 + 经典影子
+
+```python
+import pyvqnet
+pyvqnet.backends.set_backend("torch")
+
+from pyvqnet import nn
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc.sv.torch import QMachine, RY
+from pyvqnet.qnn.pq3.torch import TorchVQCLayer
+
+class QModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.qm = QMachine(2, save_ir=True)
+        self.ry_w = RY(trainable=True, wires=0, init_params=QTensor([[0.4]]))
+        self.ry_x = RY(trainable=False, wires=1)
+
+    def forward(self, x):
+        self.qm.reset_states(x.shape[0])
+        self.ry_w(q_machine=self.qm)
+        self.ry_x(params=x[:, [0]], q_machine=self.qm)
+        return x
+
+layer = TorchVQCLayer(
+    QModel(), shots=500,
+    submit_kwargs={
+        "backend": "vqnet_native",
+        "pauli_str_dict": {"Z0 Z1": 1},
+        "shadow_config": 1,
+        "shadow_seed": 42,
+    },
+)
+x = QTensor([[0.3], [0.7]])
+y = layer(x)             # y 是 torch.Tensor
+print(y.detach().numpy())  # 用 .detach().numpy() 取值
+```
+
+---
+
 ## QuantumLayerAdjoint
 
 使用 adjoint 方法计算梯度。

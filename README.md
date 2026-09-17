@@ -15,7 +15,7 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 - **量子张量计算**：QTensor 自动微分张量、dtype 类型体系、GPU 加速、CPU/GPU 设备管理
 - **经典神经网络**：Module、Linear、Conv2D、BatchNorm、LSTM 等网络层，损失函数与优化器，模型定义方式与主流机器学习框架一致
 - **量子线路构建**：QMachine 量子虚拟机，Hadamard、RX、RY、RZ、CNOT 等量子门操作，复杂线路组合与测量操作
-- **量子层封装**：QuantumLayer、QuantumBatchAsyncQcloudLayer（云真机异步）、NoiseQuantumLayer（噪声模拟层）、QuantumLayerAdjoint（伴随法梯度）
+- **量子层封装**：QuantumLayer、QuantumBatchAsyncQcloudLayer（云真机异步）、NoiseQuantumLayer（噪声模拟层）、QuantumLayerAdjoint（伴随法梯度）、VQCLayer/TorchVQCLayer（统一四后端 + 经典影子测量）[2.18.2]
 - **变分量子线路（VQC）**：内置自动微分模拟、参数化线路构建、硬件高效 ansatz、振幅/角度嵌入模板、量子自然梯度（QNG）、QNSPSA 优化器
 - **量子信息分析**：概率测量、期望值计算、量子熵、互信息等测量与熵分析
 - **QML 算法应用**：量子分类器、QVC、QDRL、Quanvolution、量子经典混合模型（CNN + QNN）
@@ -41,6 +41,7 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 | **QTensor** | Core tensor with automatic differentiation, GPU support |
 | **Classical NN** | Module, Linear, Conv2D, BatchNorm, LSTM, Loss, Optimizer |
 | **QuantumLayer (pyqpanda3)** | QuantumLayer, QuantumBatchAsyncQcloudLayer, QuantumLayerAdjoint |
+| **VQCLayer (统一量子层)** | VQCLayer、TorchVQCLayer — 四后端、经典影子测量（shadow_config）、QCloudNoiseModel 噪声 |
 | **VQC Autograd** | QMachine, Hadamard/RX/RY/RZ/CNOT, Probability, reset_states |
 | **Hybrid Layers** | QLinear (quantum FC), QConv (quantum convolution) |
 | **Templates** | HardwareEfficientAnsatz, AmplitudeEmbedding, AngleEmbedding |

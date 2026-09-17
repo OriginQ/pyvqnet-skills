@@ -212,6 +212,8 @@ for i, q in enumerate(qubits[:2]):
 - `QpandaQProgVQCLayer(origin_qprog_func, para_num, qvm_type="cpu")`
 - `QuantumBatchAsyncQcloudLayer(...)` - 真机运行
 - `QuantumLayerAdjoint(...)` - adjoint 梯度方法
+- `VQCLayer(vqc_module, ...)` - 统一量子层（四后端 + 影子测量 + 噪声模型）[2.18.2]
+- `TorchVQCLayer(vqc_module, ...)` - torch 后端统一量子层 [2.18.2]
 
 **关键签名**: `qprog_with_measure(input, param)` - **input 在前，param 在后**
 
@@ -348,6 +350,8 @@ print(Purity(qstate, [1]))          # 纯度
 - `QuantumLayer` - 通用变分量⼦层
 - `QpandaQProgVQCLayer` - QProg 返回型变分层
 - `QuantumLayerAdjoint` - adjoint 梯度 VQE
+- `VQCLayer` - 统一量子层（四后端 + 经典影子 + 噪声模型）[2.18.2]
+- `TorchVQCLayer` - torch 后端统一量子层 [2.18.2]
 - `QLinear` - 量子全连接层 (`pyvqnet.qnn.qlinear`)
 - `QConv` - 量子卷积层 (`pyvqnet.qnn.qcnn.qconv`)
 - 嵌入模板: `AmplitudeEmbeddingCircuit`, `AngleEmbeddingCircuit`, `IQPEmbeddingCircuits`
