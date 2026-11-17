@@ -557,7 +557,8 @@ Hardware Efficient Ansatz implementation as described in "Hardware-efficient Var
 - `depth` - `int` - Ansatz depth (number of layers), default: 1
 
 **Methods:**
-- `create_ansatz(params)` - Returns the quantum circuit with given parameters
+- `get_para_num()` - Returns the total number of trainable parameters required by this ansatz (`int`).
+- `create_ansatz(params)` - Returns the quantum circuit with given parameters. `params` must be a flat 1-D `QTensor`/array of length `get_para_num()`; the internal parameter ordering is managed by the ansatz.
 
 **Example:**
 ```python

@@ -17,7 +17,7 @@ pyvqnet.nn.module.Module(name="", *args, **kwargs)
 
 **关键方法**:
 - `forward(x, *args, **kwargs)` - 前向传播，必须被子类实现
-- `parameters()` - 返回所有可训练参数
+- `parameters()` - 返回所有可训练参数组成的 **list**（不是迭代器；不要写 `next(model.parameters())`，用 `model.parameters()[0]` 或直接遍历）
 - `named_parameters()` - 返回参数名和参数
 - `state_dict(destination=None, prefix="", keep_vars=False)` - 返回包含模块整个状态的字典（参数和缓存值）；`keep_vars=False` 时返回的张量从自动微分中分离，`True` 时不分离
 - `toGPU(device=DEV_GPU_0)` - 移动模型到 GPU
@@ -339,18 +339,18 @@ print(y)
 ### MaxPool2D
 
 ```python
-pyvqnet.nn.MaxPool2D(kernel_shape=(2, 2), stride=(2, 2), padding=(0, 0), name="")
+pyvqnet.nn.MaxPool2D(kernel, stride, padding="valid", name="")
 ```
 
-2D 最大池化。
+2D 最大池化。参数名是 `kernel`（不是 `kernel_shape`）。
 
 ### AvgPool2D
 
 ```python
-pyvqnet.nn.AvgPool2D(kernel_shape=(2, 2), stride=(2, 2), padding=(0, 0), name="")
+pyvqnet.nn.AvgPool2D(kernel, stride, padding="valid", name="")
 ```
 
-2D 平均池化。
+2D 平均池化。参数名是 `kernel`（不是 `kernel_shape`）。
 
 ### AdaptiveAvgPool2d
 

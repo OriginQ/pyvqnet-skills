@@ -79,50 +79,19 @@ swap(q_machine=qm, wires=[0, 1])
 
 ### 统一签名（2.18.2）
 
-> **2.18.2 变更**: 所有量子门类统一为以下签名，`trainable` 作为第一个位置参数。通用形式为 `X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)`。
+> **2.18.2 变更**: 所有量子门类统一为以下签名，`trainable` 作为第一个位置参数。
 
 ```python
-I(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-Hadamard(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-T(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-S(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-PauliX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-PauliY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-PauliZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-X1(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CRX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CRY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CRZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-U1(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-U2(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-U3(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CNOT(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CR(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-SWAP(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CSWAP(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-CZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RXX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RYY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RZZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-RZX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-Toffoli(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-IsingXX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-IsingYY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-IsingZZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-IsingXY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-PhaseShift(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-MultiRZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-SDG(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-TDG(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-ControlledPhaseShift(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-MultiControlledX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False, control_values=None)
+# 所有门类统一签名（仅类名不同）：
+X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+# MultiControlledX 额外接受 control_values=None
+# 门类：I, Hadamard, T, S, PauliX, PauliY, PauliZ, X1, RX, RY, RZ, CRX, CRY, CRZ,
+# U1, U2, U3, CY, CNOT, CR, SWAP, CSWAP, CZ, RXX, RYY, RZZ, RZX, Toffoli,
+# IsingXX, IsingYY, IsingZZ, IsingXY, PhaseShift, MultiRZ, SDG, TDG,
+# ControlledPhaseShift, MultiControlledX
 ```
 
-`trainable=True` 表示该门自带可训练参数；使用外部输入数据编码时设置为 `False` 并通过 `params=` 传入。
+`trainable=True` 表示该门自带可训练参数；使用外部输入数据编码时设置为 `False` 并通过 `params=` 传入。可训练门的参数对象为 `gate.params`，反向传播后通过 `gate.params.grad` 读取梯度；也可用 `model.parameters()` 遍历所有可训练参数。
 
 ### Hadamard
 
@@ -196,6 +165,8 @@ device.reset_states(1)
 prob = measure(q_machine=device)
 print(prob)
 ```
+
+**输出形状**: `Probability(wires=[0, 2])` 返回 `[batchsize, 2**len(wires)]`；`MeasureAll(obs={"Z0": 1})` 返回 `[batchsize, 1]`；若需多个独立期望值，传入 `obs=[{"Z0": 1}, {"Z1": 1}]`，返回 `[batchsize, 2]`（多键字典会被视为一个组合观测量）。
 
 ---
 
@@ -405,8 +376,8 @@ class QM(Module):
         self.device.reset_states(x.shape[0])
         y = self.linearx(x)
         # 编码输入 - shape 必须是 [batchsize, 1]
-        self.encode1(params=y[:, 0], q_machine=self.device)
-        self.encode2(params=y[:, 1], q_machine=self.device)
+        self.encode1(params=y[:, [0]], q_machine=self.device)
+        self.encode2(params=y[:, [1]], q_machine=self.device)
         self.ansatz(q_machine=self.device)
         return self.measure(q_machine=self.device)
 
@@ -448,12 +419,14 @@ class QM(Module):
     def forward(self, x):
         self.device.reset_states(x.shape[0])
         y = self.linearx(x)
-        self.encode1(params=y[:, 0], q_machine=self.device)
-        self.encode2(params=y[:, 1], q_machine=self.device)
+        self.encode1(params=y[:, [0]], q_machine=self.device)
+        self.encode2(params=y[:, [1]], q_machine=self.device)
         self.vqc(q_machine=self.device)  # 使用可训练参数
         self.ansatz(q_machine=self.device)
         return self.measure(q_machine=self.device)
 ```
+
+> VQC 模型与普通 `Module` 使用相同的训练流程：`loss = loss_fn(target, pred)` → `optimizer.zero_grad()` → `loss.backward()` → `optimizer._step()`。注意 VQNet 损失函数参数顺序是 `(标签, 预测值)`。
 
 ---
 
@@ -479,21 +452,7 @@ class QM(Module):
 
 ## 支持的量子门
 
-| 门 | 函数 | 类 |
-|---|---|---|
-| I | `i()` | `I` |
-| Hadamard | `hadamard()` | `Hadamard` |
-| X | `paulix()` | `PauliX` |
-| Y | `pauliy()` | `PauliY` |
-| Z | `pauliz()` | `PauliZ` |
-| RX | `rx()` | `RX` |
-| RY | `ry()` | `RY` |
-| RZ | `rz()` | `RZ` |
-| CNOT | `cnot()` | `CNOT` |
-| CZ | `cz()` | `CZ` |
-| SWAP | `swap()` | `SWAP` |
-| S | `s()` | `S` |
-| T | `t()` | `T` |
+函数形式为小写（`i()`、`hadamard()`、`rx()`、`cnot()` 等），类形式为首字母大写（`I`、`Hadamard`、`RX`、`CNOT` 等）。完整门类列表见上文 `### 统一签名（2.18.2）`。
 
 ---
 
@@ -517,7 +476,7 @@ adjoint_model = QuantumLayerAdjoint(vqc_module, name="")
 
 **注意**:
 1. 仅支持单参数量子门的 VQC 模块
-2. QMachine 必须使用伴随梯度模式：`grad_method="adjoint"`（构造参数为 `grad_mode="adjoint"`）
+2. QMachine 必须使用伴随梯度模式：构造参数为 `grad_mode="adjoint"`
 3. 支持输入数据梯度和可训练参数梯度
 4. `QuantumAdjointLayer` 是 `QuantumLayerAdjoint` 的兼容别名
 
@@ -1143,13 +1102,7 @@ print(y)
 
 ### TN native 量子门
 
-`pyvqnet.qnn.vqc.tn.native` 与 `pyvqnet.qnn.vqc.tn.torch` 中的量子门类统一签名为：
-
-```python
-X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
-```
-
-支持 `I` / `Hadamard` / `T` / `S` / `PauliX` / `PauliY` / `PauliZ` / `RX` / `RY` / `RZ` / `CRX` / `CRY` / `CRZ` / `U1` / `U2` / `U3` / `CNOT` / `CY` / `CZ` / `CR` / `SWAP` / `CSWAP` / `RXX` / `RYY` / `RZZ` / `RZX` / `Toffoli` / `IsingXX` / `IsingYY` / `IsingZZ` / `IsingXY` / `PhaseShift` / `MultiRZ` / `SDG` / `TDG` / `ControlledPhaseShift`。
+`pyvqnet.qnn.vqc.tn.native` 与 `pyvqnet.qnn.vqc.tn.torch` 共享统一签名 `X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)`，支持上文门类列表中除 `X1`、`MultiControlledX` 外的全部门。
 
 ### TN native 测量接口
 

@@ -21,6 +21,8 @@ pyvqnet.tensor.tensor.QTensor(
 - `device` - 存储设备，默认 `pyvqnet.DEV_CPU`
 - `dtype` - 数据类型，默认 `kfloat32`
 
+> **注意**: 如果 `data` 是整数列表/整数数组，dtype 可能被推断为整型（如 `kint64`）；整型张量不能设置 `requires_grad=True`。需要梯度时请传入浮点数据（如 `[1.0, 2.0]`）或显式指定 `dtype=pyvqnet.kfloat32`。
+
 **示例**:
 ```python
 from pyvqnet.tensor import QTensor
@@ -403,12 +405,22 @@ print(t)
 创建与输入形状相同的张量。
 
 ```python
+pyvqnet.tensor.ones_like(t, device=None, dtype=None)
+pyvqnet.tensor.zeros_like(t, device=None, dtype=None)
+pyvqnet.tensor.full_like(t, value, device=None, dtype=None)
+```
+
+```python
 from pyvqnet.tensor import tensor, QTensor
 
 t = QTensor([1, 2, 3])
 x = tensor.ones_like(t)
 print(x)
 # [1., 1., 1.]
+print(tensor.zeros_like(t))
+# [0., 0., 0.]
+print(tensor.full_like(t, 7))
+# [7., 7., 7.]
 ```
 
 ---

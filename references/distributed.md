@@ -392,45 +392,32 @@ print(f"rank {Comm_OP.getRank()}  {recv}")
 
 ## NCCL 异步操作
 
-以下异步接口用于 GPU 上数据，均返回 `Work` 通信句柄，通过 `work.wait()` 等待操作完成。
+异步接口**仅在 NCCL（GPU）后端可用**（gloo 下请使用同步接口），均返回 `Work` 通信句柄，**必须**调用 `work.wait()` 等待操作完成后才能读取结果。
 
-### nccl_async_all_gather
+| 接口 | 签名 | 说明 |
+|------|------|------|
+| `nccl_async_all_gather` | `(output, input, group=None, async_op=False)` | 各进程 `input` 收集到 `output` |
+| `nccl_async_all_reduce` | `(tensor, c_op="avg", group=None, async_op=False)` | 原地归约，`c_op` 取 `"sum"` / `"avg"` |
+| `nccl_async_reduce` | `(tensor, dest, c_op="avg", group=None, async_op=False)` | 归约到 `dest` 进程，`c_op` 取 `"sum"` / `"avg"` |
+| `nccl_async_broadcast` | `(tensor, src, group=None, async_op=False)` | 从 `src` 进程广播到所有进程 |
+| `nccl_async_send` | `(tensor, dest, async_op=False)` | 点对点发送（无 `group` 参数） |
+| `nccl_async_recv` | `(tensor, source, async_op=False)` | 点对点接收（无 `group` 参数） |
 
-```python
-Comm_OP.nccl_async_all_gather(output, input, group=None, async_op=False)
-```
+张量要求：
 
-```python
-import pyvqnet
-from pyvqnet import tensor
-from pyvqnet import kcomplex64
-from pyvqnet.distributed import CommController, get_rank, get_local_rank
+- 张量必须是 GPU 上的 QTensor：`.toGPU(pyvqnet.DEV_GPU_0 + get_local_rank())`；各进程 dtype、形状需一致
+- `nccl_async_all_gather` 的 `output` 需预先分配，形状为 `[world_size, *input.shape]`，dtype 与 `input` 相同
+- `nccl_async_send` / `nccl_async_recv` 的发送、接收张量 dtype 与形状必须匹配
+- 支持 `kcomplex64`、`kfloat32` 等 QTensor dtype；`output` / `input` 的 dtype 必须一致
+- 除 `nccl_async_send` / `nccl_async_recv` 外，其余接口都接受 `group` 参数；`group` 传 `split_groups` 返回的元素（`None` 表示全局组）
+- `async_op=True` 在后台执行，`Work.wait()` 阻塞至完成；`async_op=False` 为同步语义，但仍返回 `Work`
 
-Comm_OP = CommController("nccl")
-
-complex_data = tensor.QTensor(
-    [3 + 1j, 2, 1 + get_rank()], dtype=kcomplex64
-).reshape((3, 1)).toGPU(1000 + get_local_rank())
-
-out_data = tensor.empty([2, 3, 1], dtype=pyvqnet.kcomplex64).toGPU(
-    pyvqnet.DEV_GPU_0 + get_local_rank()
-)
-work = Comm_OP.nccl_async_all_gather(out_data, complex_data, group=None, async_op=True)
-work.wait()
-```
-
-### nccl_async_all_reduce
-
-```python
-Comm_OP.nccl_async_all_reduce(tensor, c_op="avg", group=None, async_op=False)
-```
-
-`c_op` 可为 `"sum"` 或 `"avg"`。
+示例（`nccl_async_all_reduce`）：
 
 ```python
 import pyvqnet
 from pyvqnet.tensor import tensor
-from pyvqnet.distributed.ControlComm import CommController, get_local_rank
+from pyvqnet.distributed import CommController, get_local_rank
 
 Comm_OP = CommController("nccl")
 
@@ -438,84 +425,12 @@ complex_data = tensor.ones([500, 500], dtype=pyvqnet.kcomplex64).toGPU(
     pyvqnet.DEV_GPU_0 + get_local_rank()
 )
 work = Comm_OP.nccl_async_all_reduce(complex_data, "sum", group=None, async_op=True)
-work.wait()
+work.wait()   # 异步操作：必须 wait 后才能使用结果
+
+# vqnetrun --nproc_per_node 2 python test.py
 ```
 
-### nccl_async_reduce
-
-```python
-Comm_OP.nccl_async_reduce(tensor, dest, c_op="avg", group=None, async_op=False)
-```
-
-```python
-from pyvqnet import tensor
-import pyvqnet
-from pyvqnet.distributed import CommController, get_local_rank
-
-Comm_OP = CommController("nccl")
-
-complex_data = tensor.ones([500, 500], dtype=pyvqnet.kcomplex64).toGPU(
-    pyvqnet.DEV_GPU_0 + get_local_rank()
-)
-work = Comm_OP.nccl_async_reduce(complex_data, 0, "sum", group=None, async_op=True)
-work.wait()
-```
-
-### nccl_async_broadcast
-
-```python
-Comm_OP.nccl_async_broadcast(tensor, src, group=None, async_op=False)
-```
-
-```python
-import pyvqnet
-from pyvqnet.tensor import tensor
-from pyvqnet.distributed import CommController, get_local_rank
-
-Comm_OP = CommController("nccl")
-
-if get_local_rank() == 1:
-    complex_data = tensor.ones([5, 5], dtype=pyvqnet.kcomplex64).toGPU(
-        pyvqnet.DEV_GPU_0 + get_local_rank()
-    )
-else:
-    complex_data = tensor.zeros([5, 5], dtype=pyvqnet.kcomplex64).toGPU(
-        pyvqnet.DEV_GPU_0 + get_local_rank()
-    )
-
-work = Comm_OP.nccl_async_broadcast(complex_data, 1, group=None, async_op=True)
-work.wait()
-```
-
-### nccl_async_send / nccl_async_recv
-
-```python
-Comm_OP.nccl_async_send(tensor, dest, async_op=False)
-Comm_OP.nccl_async_recv(tensor, source, async_op=False)
-```
-
-```python
-import pyvqnet
-from pyvqnet.tensor import tensor
-from pyvqnet.distributed import CommController, get_local_rank
-
-Comm_OP = CommController("nccl")
-
-if get_local_rank() == 0:
-    complex_data = tensor.ones([5000, 5000], dtype=pyvqnet.kcomplex64).toGPU(
-        pyvqnet.DEV_GPU_0 + get_local_rank()
-    ) * 10
-else:
-    complex_data = tensor.ones([5000, 5000], dtype=pyvqnet.kcomplex64).toGPU(
-        pyvqnet.DEV_GPU_0 + get_local_rank()
-    )
-
-if get_local_rank() == 0:
-    work = Comm_OP.nccl_async_send(complex_data, 1, True)
-else:
-    work = Comm_OP.nccl_async_recv(complex_data, 0, True)
-work.wait()
-```
+> 异步接口只支持 NCCL；同一进程不要同时创建 gloo 和 NCCL 两个控制器。
 
 ---
 
@@ -669,6 +584,8 @@ pyvqnet.distributed.datasplit.split_data(x_train, y_train, shuffle=False)
 
 **返回**：切分后的训练数据和标签。
 
+> **切分规则**: `split_data` 按进程数均匀切分，并丢弃不能整除的尾部样本。例如数据量 n=5、进程数 size=2 时，rank0 得到 `[0,1]`、rank1 得到 `[2,3]`，样本 4 被丢弃。需要保留全部样本时请自行补齐长度或预先切分。
+
 ```python
 from pyvqnet.distributed import split_data
 import numpy as np
@@ -766,6 +683,8 @@ Comm_OP.destroy()
 ```
 
 > GPU 版本将 `CommController("gloo")` 改为 `CommController("nccl")`，并把模型与数据通过 `.toGPU(get_local_rank() + DEV_GPU_0)` 移动到对应 GPU。
+>
+> `vqnetrun` 使用 spawn 启动子进程。实际脚本建议把初始化和训练逻辑放入 `def main():`，并在 `if __name__ == "__main__": main()` 中调用；`CommController` 应在每个 worker 进程内创建，避免父进程重复初始化。
 
 ---
 
@@ -832,10 +751,8 @@ PipelineParallelTrainingWrapper(args, join_layers, trainset)
 
 ```python
 import os
-import pyvqnet
 import pyvqnet.nn as nn
-from pyvqnet.nn import Sequential, CrossEntropyLoss, Linear, Conv2D
-from pyvqnet.nn import activation as F, MaxPool2D
+from pyvqnet.nn import Sequential, CrossEntropyLoss, Linear, Conv2D, MaxPool2D, activation as F
 from pyvqnet.distributed.pp import PipelineParallelTrainingWrapper
 from pyvqnet.distributed.configs import comm as dist
 from pyvqnet.tensor import tensor
@@ -846,19 +763,11 @@ num_steps = 1000
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.features = Sequential(
-            Conv2D(3, 8, 3, padding='same'), F.ReLu(), MaxPool2D([2, 2], [2, 2]),
-            Conv2D(8, 16, 3, padding='same'), F.ReLu(), MaxPool2D([2, 2], [2, 2]),
-        )
-        self.cls = Sequential(
-            Linear(16 * 56 * 56, 64), F.ReLu(), Linear(64, 10),
-        )
+        self.features = Sequential(Conv2D(3, 8, 3, padding='same'), F.ReLu(), MaxPool2D([2, 2], [2, 2]))
+        self.cls = Sequential(Linear(8 * 112 * 112, 10))   # 224x224 输入经一次 MaxPool2D 后为 8x112x112
 
     def forward(self, x):
-        x = self.features(x)
-        x = tensor.flatten(x, 1)
-        x = self.cls(x)
-        return x
+        return self.cls(tensor.flatten(self.features(x), 1))
 
 def join_layers(model):
     return [*model.features, lambda x: tensor.flatten(x, 1), *model.cls]
@@ -976,8 +885,6 @@ pyvqnet.distributed.hybrid.ParallelTrainingWrapper(args, pipeline_def, trainset,
 
 ```python
 import os
-import numpy as np
-import pyvqnet
 import pyvqnet.nn as nn
 from pyvqnet.nn import CrossEntropyLoss
 from pyvqnet.distributed.configs import comm as dist
@@ -1009,30 +916,14 @@ def main():
 
     # 2-stage 复合流水线：classical + VQC | VQC + classical
     pipeline_def = [
-        {
-            "type": "stage",
-            "sub": [
-                {"type": "classical", "layers": [nn.Linear(7, NUM_WIRES)]},
-                {
-                    "type": "vqc_split",
-                    "module_class": MyVQC,
-                    "vqc_stages": 2,
-                    "vqc_slice": 0,
-                },
-            ],
-        },
-        {
-            "type": "stage",
-            "sub": [
-                {
-                    "type": "vqc_split",
-                    "module_class": MyVQC,
-                    "vqc_stages": 2,
-                    "vqc_slice": 1,
-                },
-                {"type": "classical", "layers": [nn.Linear(NUM_WIRES, 8)]},
-            ],
-        },
+        {"type": "stage", "sub": [
+            {"type": "classical", "layers": [nn.Linear(7, NUM_WIRES)]},
+            {"type": "vqc_split", "module_class": MyVQC, "vqc_stages": 2, "vqc_slice": 0},
+        ]},
+        {"type": "stage", "sub": [
+            {"type": "vqc_split", "module_class": MyVQC, "vqc_stages": 2, "vqc_slice": 1},
+            {"type": "classical", "layers": [nn.Linear(NUM_WIRES, 8)]},
+        ]},
     ]
 
     trainset = ...  # 需具有 .data / .labels 且 __getitem__ 返回 (data, label)
@@ -1190,7 +1081,6 @@ ZeroModelInitial(args=None, model=None, optimizer=None)
 
 ```python
 import os
-import pyvqnet
 import pyvqnet.nn as nn
 import pyvqnet.optim as optim
 from pyvqnet import kint64, kfloat32
@@ -1202,21 +1092,12 @@ from pyvqnet.distributed import (
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(784, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 128)
-        self.fc4 = nn.Linear(128, 64)
-        self.fc5 = nn.Linear(64, 10)
-        self.ac = nn.activation.ReLu()
+        self.net = nn.Sequential(nn.Linear(784, 256), nn.activation.ReLu(),
+                                 nn.Linear(256, 128), nn.activation.ReLu(),
+                                 nn.Linear(128, 10))
 
     def forward(self, x):
-        x = x.reshape([-1, 784])
-        x = self.ac(self.fc1(x))
-        x = self.ac(self.fc2(x))
-        x = self.ac(self.fc3(x))
-        x = self.ac(self.fc4(x))
-        x = self.fc5(x)
-        return x
+        return self.net(x.reshape([-1, 784]))
 
 local_rank = get_local_rank()
 model = Model().to(local_rank + 1000)
@@ -1291,21 +1172,10 @@ DataParallelVQCLayer(Comm_OP, vqc_module, name="",
 
 ### DataParallelVQCAdjointLayer
 
-使用 adjoint 梯度的 VQC 数据并行层（继承自 `QuantumLayerAdjoint`），参数与 `DataParallelVQCLayer` 相同：
+使用 adjoint 梯度的 VQC 数据并行层（继承自 `QuantumLayerAdjoint`），构造参数与 `DataParallelVQCLayer` **完全相同**。用法同上面的 `DataParallelVQCLayer` 示例，只需：
 
-```python
-from pyvqnet.distributed import DataParallelVQCAdjointLayer
-
-DataParallelVQCAdjointLayer(Comm_OP, vqc_module, name="",
-                            use_bucket_cpp_allreduce=True,
-                            bucket_bytes_cap=25 * 1024 * 1024,
-                            first_bucket_bytes_cap=1024 * 1024,
-                            find_unused_parameters=False,
-                            gradient_as_bucket_view=False)
-```
-
-- `vqc_module` 必须为 `QuantumLayerAdjoint` 类型的 VQC 模块
-- 数据分片由用户自行完成，每个节点处理自己的分片
+- 将 `qmodel` 的 `QMachine` 设为 `grad_mode="adjoint"`（如 `QModel(..., grad_mode="adjoint")`）
+- 从 `pyvqnet.distributed` 导入 `DataParallelVQCAdjointLayer`，用 `layer = DataParallelVQCAdjointLayer(Comm_OP, qmodel)` 替换原层并调用 `layer.train()`；数据分片由用户自行完成，每个节点处理自己的分片
 
 ### DataParallelLayer
 
@@ -1374,36 +1244,6 @@ Comm_OP.barrier()
 Comm_OP.destroy()
 ```
 
-### DataParallelVQCAdjointLayer 示例
-
-将上述 `QModel` 的 `grad_mode` 设为 `"adjoint"`，并使用伴随层替换：
-
-```python
-# vqnetrun --nproc_per_node 2 python test.py
-
-import pyvqnet
-from pyvqnet.tensor import tensor
-from pyvqnet.distributed import CommController, DataParallelVQCAdjointLayer
-from pyvqnet.device import DEV_GPU_0
-
-Comm_OP = CommController("nccl")
-
-input_x = tensor.QTensor([[0.1, 0.2, 0.3]])
-input_x = tensor.broadcast_to(input_x, [100, 3]).toGPU(Comm_OP.get_local_rank() + DEV_GPU_0)
-input_x.requires_grad = True
-
-qmodel = QModel(num_wires=6, num_layer=2, dtype=pyvqnet.kcomplex64, grad_mode="adjoint")
-qmodel.toGPU(Comm_OP.get_local_rank() + DEV_GPU_0)
-
-layer = DataParallelVQCAdjointLayer(Comm_OP, qmodel)
-layer.train()
-y = layer(input_x)
-y.backward()
-
-Comm_OP.barrier()
-Comm_OP.destroy()
-```
-
 ---
 
 ## Qubits Reorder（量子比特重排）
@@ -1413,39 +1253,15 @@ Qubits Reorder 模块提供跨设备的量子比特分布执行，支持将大�
 ### 导入路径
 
 ```python
-# 核心分布式量子虚拟机
 from pyvqnet.distributed.qubits_reorder import (
-    DistributedQMachine,          # 分布式量子虚拟机
-    DistQuantumLayerAdjoint,      # 分布式量子层（adjoint 梯度）
-    TorchDistributedQMachine,     # torch 后端分布式量子虚拟机
-    TorchDistQuantumLayerAdjoint,
+    DistributedQMachine, DistQuantumLayerAdjoint, QubitReorder,
 )
-
-# 量子比特重排操作
-from pyvqnet.distributed.qubits_reorder import (
-    QubitReorder,                 # 量子比特重排器
-    QubitReorderOp,               # 重排操作
-    QubitsPermutation,            # 比特置换描述
-    compute_qubit_mapping,        # 计算比特映射
-    compute_qubit_remapping,      # 计算重映射
-    flat_time_space_tiling,       # 时空平铺映射
-    gen_qr_machine,               # 生成重排机器
-)
-
-# 量子比特间 swap 操作
-from pyvqnet.distributed.qubits_reorder import (
-    swap_global_global_q1,        # 全局-全局 swap
-    swap_local_global_q1,         # 本地-全局 swap
-)
-
-# 工具函数
-from pyvqnet.distributed.qubits_reorder import (
-    gen_local_qm_and_op_history,  # 生成本地量子机和操作历史
-    measure_all_for_qr,           # 重排后测量
-    exec_states_qr,               # 重排后执行态
-    update_global_qmachine_states_in_qr,
-    update_local_states_with_qr,
-)
+# 同一导入路径下的其他接口: QubitReorderOp, QubitsPermutation,
+# compute_qubit_mapping, compute_qubit_remapping, flat_time_space_tiling,
+# gen_qr_machine, swap_global_global_q1, swap_local_global_q1,
+# TorchDistributedQMachine, TorchDistQuantumLayerAdjoint,
+# gen_local_qm_and_op_history, measure_all_for_qr, exec_states_qr,
+# update_global_qmachine_states_in_qr, update_local_states_with_qr
 ```
 
 ### 核心理念

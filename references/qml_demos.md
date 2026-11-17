@@ -247,21 +247,29 @@ layer = QConv(
 ## 混合 CNN + QNN 模型
 
 ```python
-from pyvqnet.nn import Module, Conv2D, Linear, ReLU, Sequential
+from pyvqnet.nn import (
+    Module, Conv2D, Linear, ReLU, Sequential, ModuleList,
+    MaxPool2D, AdaptiveAvgPool2d,
+)
 from pyvqnet.qnn.vqc import QMachine, RZ, Probability
 from pyvqnet.qnn.vqc import VQC_HardwareEfficientAnsatz
 
 class HybridModel(Module):
     def __init__(self):
         super().__init__()
-        # 经典 CNN 部分
+        # 输入 [B, 1, 16, 16] -> CNN -> [B, 32]
         self.cnn = Sequential(
             Conv2D(1, 16, 3),
             ReLU(),
-            Conv2D(16, 32, 3)
+            MaxPool2D(2, 2),          # 参数名是 kernel，不是 kernel_shape
+            Conv2D(16, 32, 3),
+            ReLU(),
+            AdaptiveAvgPool2d((1, 1)),
         )
-        # 量子部分
+        self.fc = Linear(32, 4)        # 压缩为 4 个角度
+        # 量子部分：4 个编码门 + 变分 ansatz
         self.device = QMachine(4)
+        self.encode = ModuleList([RZ(wires=i) for i in range(4)])
         self.ansatz = VQC_HardwareEfficientAnsatz(
             4, ["rx", "RY", "rz"],
             entangle_gate="cnot",
@@ -270,12 +278,14 @@ class HybridModel(Module):
         self.measure = Probability(wires=[0, 1])
 
     def forward(self, x):
-        # 经典前处理
-        x = self.cnn(x)
-        x = x.reshape([-1, 32])
+        # 经典前处理：CNN -> 32 维特征 -> 4 个角度
+        x = self.cnn(x).reshape([-1, 32])
+        x = self.fc(x)
 
-        # 量子计算
+        # 量子计算：角度编码后执行 ansatz
         self.device.reset_states(x.shape[0])
+        for i in range(4):
+            self.encode[i](params=x[:, [i]], q_machine=self.device)
         self.ansatz(q_machine=self.device)
         return self.measure(q_machine=self.device)
 ```

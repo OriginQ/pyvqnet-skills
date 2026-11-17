@@ -56,8 +56,8 @@ class QModel(Module):
 
         # 数据编码（参数来自经典层输出）
         # 注意：参数形状必须是 [batchsize, 1]
-        self.encode_z(params=y[:, 0], q_machine=self.device)
-        self.encode_x(params=y[:, 1], q_machine=self.device)
+        self.encode_z(params=y[:, [0]], q_machine=self.device)
+        self.encode_x(params=y[:, [1]], q_machine=self.device)
 
         # 可训练量子门（使用内部参数）
         self.trainable_rx(q_machine=self.device)

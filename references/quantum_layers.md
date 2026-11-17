@@ -25,6 +25,10 @@ pyvqnet.qnn.pq3.quantumlayer.QuantumLayer(
 - `diff_method` - 梯度方法: "parameter_shift" 或 "finite_diff"
 - `delta` - 有限差分步长
 
+**可训练参数与输出形状**:
+- `pqc.m_para` 是层内部的可训练 `Parameter`；反向传播后通过 `pqc.m_para.grad` 读取梯度，也可用 `pqc.parameters()`。
+- `ProbsMeasure(machine, prog, [q0, q1])`（`shots=1`）返回 `[batch, 2**len(measure_qubits)]`；`expval` 在 `QuantumLayer` 中返回 `[batch, 1]`。
+
 **关键签名要求**:
 ```python
 def qprog_with_measure(input, param):
@@ -37,7 +41,7 @@ def qprog_with_measure(input, param):
 ```python
 from pyvqnet.qnn.pq3.measure import ProbsMeasure
 from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
-from pyvqnet.tensor import QTensor, ones
+from pyvqnet.tensor import QTensor
 import pyqpanda3.core as pq
 
 def pqctest(input, param):
@@ -64,10 +68,14 @@ input = QTensor([[1, 2, 3, 4], [4, 2, 2, 3], [3.0, 3, 2, 2]])
 rlt = pqc(input)
 print(rlt)
 
-grad = ones(rlt.data.shape) * 1000
-rlt.backward(grad)
+# ProbsMeasure 输出是概率向量：直接对概率求和（或传全 1 上游梯度）得到常数 1，
+# 参数梯度为 0。这里用非恒定标量损失演示；实际训练可用 MSELoss(target, rlt)。
+loss = (rlt * rlt).sum()
+loss.backward()
 print(pqc.m_para.grad)
 ```
+
+> **梯度为 0 的常见原因**: 使用 `ProbsMeasure` 时，不要用 `rlt.backward(ones(rlt.shape))` 或 `rlt.sum().backward()` 来演示参数梯度——概率之和恒为 1，梯度为 0。请使用 `MSELoss` / `CrossEntropyLoss` 等非恒定标量损失，或改用 `expval` 得到标量期望值。可训练门也应优先使用 `RY/RX` 等能改变布居数的旋转；纯 `RZ` + 计算基概率测量同样可能得到零梯度。
 
 ---
 
@@ -596,47 +604,28 @@ pyvqnet.qnn.utils.QiskitLayer(qiskit_circuits, para_num)
 ```python
 import numpy as np
 import qiskit
-from qiskit.quantum_info import Statevector
-from qiskit.quantum_info.operators import Pauli
-from pyvqnet.nn import Module, MeanSquaredError
-from pyvqnet.optim import Adam
+from qiskit.quantum_info import Statevector, Pauli
+from pyvqnet.nn import MeanSquaredError
 from pyvqnet.tensor import QTensor
 from pyvqnet.qnn.utils import QiskitLayer
 
 class QISKIT_VQC:
     """run(**kwargs) 通过 x 读取输入、w 读取权重。"""
-    def __init__(self, n_qubits, shots):
+    def __init__(self, n_qubits):
         self.n_qubits = n_qubits
-        self.shots = shots
 
     def run(self, **kwargs):
-        x = kwargs["x"].astype(np.float64)
-        w = kwargs["w"].astype(np.float64)
+        x, w = kwargs["x"].astype(np.float64), kwargs["w"].astype(np.float64)
         qc = qiskit.QuantumCircuit(self.n_qubits)
         for i in range(self.n_qubits):
             qc.ry(x[i], i)
             qc.ry(w[i], i)
-        return np.real(Statevector(qc).expectation_value(
-            Pauli("Z" + "I" * (self.n_qubits - 1))))
+        return np.real(Statevector(qc).expectation_value(Pauli("Z" + "I" * (self.n_qubits - 1))))
 
-circuit = QISKIT_VQC(2, 1000)
-
-class Model_qiskit(Module):
-    def __init__(self):
-        super(Model_qiskit, self).__init__()
-        self.qvc = QiskitLayer(circuit, 2)
-
-    def forward(self, x):
-        return self.qvc(x) * 0.5 + 0.5
-
-model = Model_qiskit()
-optimizer = Adam(model.parameters(), lr=0.01)
+layer = QiskitLayer(QISKIT_VQC(2), 2)
 x = QTensor([[0.5, 0.5], [0.3, 0.7]], requires_grad=True)
-y = model(x)
-loss = MeanSquaredError()(QTensor([[1.0], [0.0]]), y)
+loss = MeanSquaredError()(QTensor([[1.0], [0.0]]), layer(x))
 loss.backward()
-optimizer._step()
-print(x.grad, model.qvc.m_para.grad)
 ```
 
 > 官方示例测试环境：qiskit 2.1.1 / qiskit-aer 0.17.2。
@@ -660,8 +649,7 @@ pyvqnet.qnn.utils.CirqLayer(cirq_vqc, para_num)
 import numpy as np
 import cirq
 import sympy
-from pyvqnet.nn import Module, MeanSquaredError
-from pyvqnet.optim import Adam
+from pyvqnet.nn import MeanSquaredError
 from pyvqnet.tensor import QTensor
 from pyvqnet.qnn.utils import CirqLayer
 from pyvqnet.utils.utils import get_circuit_symbols
@@ -669,45 +657,23 @@ from pyvqnet.utils.utils import get_circuit_symbols
 class CIRQ_VQC:
     def __init__(self):
         self.qubits = cirq.LineQubit.range(2)
-        theta = sympy.symbols("theta(0:2)")
-        self.theta = np.asarray(theta).reshape((2, 1))
-
-        circuit = cirq.Circuit()
-        for i, q in enumerate(self.qubits):
-            circuit.append(cirq.ry(self.theta[i][0])(q))
-        circuit.append(cirq.CNOT(self.qubits[0], self.qubits[1]))
-        self._circuit = circuit
-
+        self.theta = np.asarray(sympy.symbols("theta(0:2)")).reshape((2, 1))
+        self._circuit = cirq.Circuit([cirq.ry(self.theta[i][0])(q) for i, q in enumerate(self.qubits)])
+        self._circuit.append(cirq.CNOT(*self.qubits))
         self._backend = cirq.Simulator()
         # 供 CirqLayer 分离参数符号与输入符号
-        self._param_symbols_list, self._input_symbols_list = \
-            get_circuit_symbols(self._circuit)
+        self._param_symbols_list, self._input_symbols_list = get_circuit_symbols(self._circuit)
 
     def run(self, resolver, init_state):
         rlt = self._backend.simulate(
             self._circuit, resolver, initial_state=init_state).final_state_vector
-        z0 = cirq.Z(self.qubits[0])
-        return z0.expectation_from_state_vector(
+        return cirq.Z(self.qubits[0]).expectation_from_state_vector(
             rlt, {self.qubits[0]: 0}).real
 
-circuit = CIRQ_VQC()
-
-class Model_cirq(Module):
-    def __init__(self):
-        super(Model_cirq, self).__init__()
-        self.qvc = CirqLayer(circuit, 2)
-
-    def forward(self, x):
-        return self.qvc(x) * 0.5 + 0.5
-
-model = Model_cirq()
-optimizer = Adam(model.parameters(), lr=0.01)
+layer = CirqLayer(CIRQ_VQC(), 2)
 x = QTensor([[1.0, 0.0, 0.0, 0.0]], requires_grad=True)
-y = model(x)
-loss = MeanSquaredError()(QTensor([[1.0]]), y)
+loss = MeanSquaredError()(QTensor([[1.0]]), layer(x))
 loss.backward()
-optimizer._step()
-print(x.grad, model.qvc.m_para.grad)
 ```
 
 > 依赖要求：`cirq==1.5.0`，且 `numpy<2`。

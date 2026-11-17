@@ -154,7 +154,7 @@ class QModel(Module):
         # 必须在 forward 开头调用！
         self.device.reset_states(x.shape[0])
         y = self.linear(x)
-        self.encode(params=y[:, 0], q_machine=self.device)
+        self.encode(params=y[:, [0]], q_machine=self.device)
         return Probability(wires=[0])(q_machine=self.device)
 ```
 

@@ -262,8 +262,9 @@ print(layer.m_para.grad)
 **关键 API**:
 - `pyvqnet.qnn.vqc.QMachine(num_wires)` - 模拟器
 - `pyvqnet.qnn.vqc.Hadamard`, `RX`, `RY`, `RZ`, `CNOT`
-- `pyvqnet.qnn.vqc.Probability(wires)` - 概率测量
+- `pyvqnet.qnn.vqc.Probability(wires)` - 概率测量，输出 `[batchsize, 2**len(wires)]`
 - `VQC_HardwareEfficientAnsatz` - 硬件高效 ansatz
+- 可训练门参数：`gate.params` / `gate.params.grad`；也可用 `model.parameters()`
 - `pyvqnet.qnn.SPSA` - SPSA 优化器（官方 qnn_pq3 文档）；`pyvqnet.qnn.vqc.QNSPSAOptimizer` - 量子自然 SPSA 优化器（`references/vqc.md`）
 
 **关键**: 必须在 forward 开头调用 `device.reset_states(batchsize)`
@@ -293,7 +294,7 @@ class QModel(Module):
         self.device.reset_states(x.shape[0])
 
         y = self.linear(x)
-        self.encode(params=y[:, 0], q_machine=self.device)
+        self.encode(params=y[:, [0]], q_machine=self.device)
         self.ansatz(q_machine=self.device)
         return self.measure(q_machine=self.device)
 
@@ -636,8 +637,11 @@ print(pyvqnet.backends.get_backend())  # "torch"
 9. **HardwareEfficientAnsatz 参数遗漏**: pyqpanda3 版本必须使用 `get_para_num()` + `create_ansatz(params)` 组合, 不能调用无参方法
 10. **损失函数参数顺序**: VQNet 损失函数 `loss_fn(label, pred)` — 标签在前，预测值在后（与 PyTorch 相反）
 11. **已移除的 `has_params`**: 2.18.2 移除了 VQC 门类的 `has_params` 参数，可训练门使用 `trainable=True`（第一位置参数），如 `RX(trainable=True, wires=0)`
-12. **VQCLayer 测量与 IR**: `VQCLayer`/`VQCQCloudLayer` 的 `QMachine` 必须设置 `save_ir=True`；`VQCLayer` 的 `pauli_str_dict`（期望值）与 `measure_qubits`（概率）互斥，`VQCQCloudLayer` 仅支持 `pauli_str_dict` 且不能使用 `MeasureAll`
-13. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
+12. **Probability 输出不能直接求和求梯度**: `ProbsMeasure` 输出概率向量，`rlt.backward(ones(rlt.shape))` 或 `rlt.sum().backward()` 的梯度为 0（概率和为常数 1）。请用 `MSELoss`/`CrossEntropyLoss` 等非恒定标量损失，或改用 `expval` 得到标量期望值
+13. **VQCLayer 测量与 IR**: `VQCLayer`/`VQCQCloudLayer` 的 `QMachine` 必须设置 `save_ir=True`；`VQCLayer` 的 `pauli_str_dict`（期望值）与 `measure_qubits`（概率）互斥，`VQCQCloudLayer` 仅支持 `pauli_str_dict` 且不能使用 `MeasureAll`
+14. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
+15. **`model.parameters()` 返回 list**: 不是迭代器，不能写 `next(model.parameters())`；用 `model.parameters()[0]` 或直接遍历
+16. **整数张量不能求梯度**: `QTensor([1, 2, 3], requires_grad=True)` 会因 dtype 为整型而报错；需要梯度时用浮点数据或 `dtype=kfloat32`
 
 ### GPU 训练要点
 
