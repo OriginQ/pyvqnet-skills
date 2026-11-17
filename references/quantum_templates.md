@@ -1,4 +1,4 @@
-# Quantum Circuit Templates and Gates API Reference (v2.18.1)
+# Quantum Circuit Templates and Gates API Reference (v2.18.2)
 
 ## Embedding Circuits
 
@@ -587,7 +587,7 @@ print(cir)
 pyvqnet.qnn.pq3.template.BasicEntanglerTemplate(
     weights=None,
     num_qubits=1,
-    rotation=pq.RX
+    rotation=pyqpanda3.core.RX
 )
 ```
 
@@ -597,7 +597,7 @@ Basic entangling template: each layer consists of single-qubit rotations followe
 **Parameters:**
 - `weights` - `np.ndarray` - Shape `(L, len(qubits))`. Each weight is a parameter for a rotation gate. Default: `None` uses `(1, 1)` random normal.
 - `num_qubits` - `int` - Number of qubits, default: 1
-- `rotation` - Single-parameter single-qubit gate class, default: `pq.RX` (pyqpanda3.core.RX)
+- `rotation` - Single-parameter single-qubit gate class, default: `pyqpanda3.core.RX`
 
 **Methods:**
 - `create_circuit(qubits)` - Builds and returns the quantum circuit
@@ -721,19 +721,20 @@ pyvqnet.qnn.pq3.Quantum_Embedding(
 Variational quantum embedding for encoding classical data into quantum states, as described in "Quantum embeddings for machine learning" (arXiv:2001.03622). Uses RZ-RY-RZ construction to create a variational circuit that embeds classical data.
 
 **Parameters:**
-- `num_qubits` - Number of qubits allocated from pyqpanda
-- `machine` - Quantum VM from pyqpanda
+- `num_qubits` - Number of qubits allocated from pyqpanda3
+- `machine` - Quantum VM from pyqpanda3
 - `num_repetitions_input` - Number of repetitions for encoding input
 - `depth_input` - Input feature dimension
 - `num_unitary_layers` - Number of repeated variational gates per submodule
 - `num_repetitions` - Number of submodule repetitions
 
 **Methods:**
-- `compute_circuit()` - Returns the circuit, can be used as input to `QuantumLayer`
+- `compute_circuit(x, w)` - Builds and returns the circuit; pass the bound method as the first argument of `QuantumLayer`
 
 **Example:**
 ```python
-from pyvqnet.qnn.pq3 import QpandaQCircuitVQCLayerLite, Quantum_Embedding
+from pyvqnet.qnn.pq3 import Quantum_Embedding
+from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
 from pyvqnet.tensor import tensor
 import pyqpanda3.core as pq
 
@@ -744,15 +745,13 @@ num_unitary_layers = 2
 
 local_machine = pq.CPUQVM()
 nq = depth_input * num_repetitions_input
-qubits = range(nq)
-cubits = range(nq)
 
 data_in = tensor.ones([12, depth_input])
 data_in.requires_grad = True
 
 qe = Quantum_Embedding(nq, local_machine, num_repetitions_input,
                         depth_input, num_unitary_layers, num_repetitions)
-qlayer = QpandaQCircuitVQCLayerLite(qe.compute_circuit, qe.param_num)
+qlayer = QuantumLayer(qe.compute_circuit, qe.param_num)
 
 y = qlayer.forward(data_in)
 y.backward()

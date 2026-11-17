@@ -15,11 +15,11 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 - **量子张量计算**：QTensor 自动微分张量、dtype 类型体系、GPU 加速、CPU/GPU 设备管理
 - **经典神经网络**：Module、Linear、Conv2D、BatchNorm、LSTM 等网络层，损失函数与优化器，模型定义方式与主流机器学习框架一致
 - **量子线路构建**：QMachine 量子虚拟机，Hadamard、RX、RY、RZ、CNOT 等量子门操作，复杂线路组合与测量操作
-- **量子层封装**：QuantumLayer、QuantumBatchAsyncQcloudLayer（云真机异步）、NoiseQuantumLayer（噪声模拟层）、QuantumLayerAdjoint（伴随法梯度）、VQCLayer/TorchVQCLayer（统一四后端 + 经典影子测量）[2.18.2]
+- **量子层封装**：QuantumLayer、QuantumBatchAsyncQcloudLayer（云真机异步）、QuantumLayerAdjoint（伴随法梯度）、VQCLayer/TorchVQCLayer（统一四后端 + 经典影子测量）[2.18.2]
 - **变分量子线路（VQC）**：内置自动微分模拟、参数化线路构建、硬件高效 ansatz、振幅/角度嵌入模板、量子自然梯度（QNG）、QNSPSA 优化器
 - **量子信息分析**：概率测量、期望值计算、量子熵、互信息等测量与熵分析
 - **QML 算法应用**：量子分类器、QVC、QDRL、Quanvolution、量子经典混合模型（CNN + QNN）
-- **分布式训练**：MPI 多进程 CPU 训练、NCCL GPU 通信、多节点部署、流水线并行、张量并行、ZeRO 零冗余优化器
+- **分布式训练**：gloo (CPU) / NCCL (GPU) 多进程训练、多节点部署、数据/张量/流水线/混合并行（ParallelTrainingWrapper）
 - **PyTorch 后端**：无缝切换 torch 计算后端；torch 后端状态向量量子线路（`sv.torch`）与张量网络量子线路（`tn.torch`）
 - **大模型算子与微调**：scaled softmax 族、top-k/top-p/min-p token 采样族、fused_moe 混合专家算子，trl 微调损失（SFT / DPO / PPO / GRPO / Reward）
 - **量子大模型**：quantum-llm 结合 Llama Factory，使用 VQC 进行大模型微调
@@ -41,11 +41,13 @@ VQNet 技能库是一个 AI 辅助量子机器学习编程技能库，是本源�
 | **QTensor** | Core tensor with automatic differentiation, GPU support |
 | **Classical NN** | Module, Linear, Conv2D, BatchNorm, LSTM, Loss, Optimizer |
 | **QuantumLayer (pyqpanda3)** | QuantumLayer, QuantumBatchAsyncQcloudLayer, QuantumLayerAdjoint |
+| **Third-party Quantum Layers** | QiskitLayer, CirqLayer (`pyvqnet.qnn.utils`) |
 | **VQCLayer (统一量子层)** | VQCLayer、TorchVQCLayer — 四后端、经典影子测量（shadow_config）、QCloudNoiseModel 噪声 |
+| **VQC Optimizers** | SPSA (`pyvqnet.qnn`), QNSPSAOptimizer |
 | **VQC Autograd** | QMachine, Hadamard/RX/RY/RZ/CNOT, Probability, reset_states |
 | **Hybrid Layers** | QLinear (quantum FC), QConv (quantum convolution) |
 | **Templates** | HardwareEfficientAnsatz, AmplitudeEmbedding, AngleEmbedding |
-| **Distributed** | MPI/NCCL multi-GPU training (Linux only) |
+| **Distributed** | gloo/NCCL, data/tensor/pipeline/hybrid parallelism (Linux only) |
 | **Torch Quantum Circuits** | `sv.torch`（状态向量 36 门）、`tn.torch`（张量网络）、`pq3.torch` 量子层 |
 | **LLM Ops & TRL** | scaled_softmax 族、top-k/top-p/min-p 采样、fused_moe、sft/dpo/ppo/grpo/reward_loss |
 | **Quantum LLM** | Fine-tuning with quantum circuits via quantum-llm |
@@ -97,8 +99,7 @@ pip install pyqpanda3
 
 # Optional:
 pip install torch                     # PyTorch backend（需自行安装，官方基准 torch 2.11.0+cu126 验证）
-conda install conda-forge::mpich-mpicxx==4.1.2  # Distributed CPU
-pip install mpi4py                  # Distributed CPU
+# 分布式: CPU 使用内置 gloo（无需额外安装）；GPU 使用随包附带的 NCCL
 ```
 
 ## Usage
@@ -211,13 +212,13 @@ pyvqnet-skills/
     ├── qtensor.md                # QTensor API
     ├── classic_nn.md             # Module, Linear, Conv, Loss, Optimizer
     ├── utils.md                  # 神经网络工具
-    ├── quantum_layers.md         # QuantumLayer, QcloudLayer
+    ├── quantum_layers.md         # QuantumLayer, VQCLayer/TorchVQCLayer
     ├── vqc.md                    # VQC autograd module
     ├── measurement.md            # 量子测量与熵
     ├── qnn.md                    # QNN 架构总览
     ├── quantum_templates.md      # 电路模板与拟设
     ├── qml_demos.md              # QVC, QDRL, Quanvolution
-    ├── distributed.md            # MPI/NCCL 分布式
+    ├── distributed.md            # gloo/NCCL 分布式（含 ParallelTrainingWrapper）
     ├── quantum_llm.md            # Quantum LLM fine-tuning
     ├── torch_api.md              # PyTorch 后端 / sv.torch / tn.torch
     └── llm_ops.md                # 大模型算子 + trl 微调损失
@@ -248,4 +249,4 @@ Apache License 2.0
 
 ## Credits
 
-Based on official VQNet 2.18.1 documentation from Origin Quantum.
+Based on official VQNet 2.18.2 documentation from Origin Quantum.

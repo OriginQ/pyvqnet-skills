@@ -1,4 +1,4 @@
-# Utility Functions API Reference (v2.18.1)
+# Utility Functions API Reference (v2.18.2)
 
 ## Random Seed Management
 

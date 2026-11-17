@@ -30,7 +30,7 @@ from pyvqnet.nn.loss import CategoricalCrossEntropy
 from pyvqnet.tensor.tensor import QTensor
 from pyvqnet.data import data_generator as dataloader
 from pyvqnet.qnn.pq3.quantumlayer import QuantumLayer
-from pyvqnet.qnn.pq3.measure import probs_measure
+from pyvqnet.qnn.pq3.measure import ProbsMeasure
 import numpy as np
 
 qnum = 4
@@ -73,7 +73,8 @@ def qvc_circuits(input, weights):
 
     prog = pq.QProg()
     prog << circult
-    prob = probs_measure(machine, prog, qlist[0])
+    # 2.18.2: ProbsMeasure(machine, prog, measure_qubits)
+    prob = ProbsMeasure(machine, prog, [qlist[0]])
     return prob
 
 class Model(Module):
@@ -108,6 +109,11 @@ def get_accuary(result, label):
     return score
 
 model = Model()
+# 可选：用 NumPy 初始参数初始化 QuantumLayer（2.18.2 推荐写法）
+from pyvqnet.tensor import to_tensor
+init_params = np.random.uniform(-np.pi, np.pi, 24).astype(np.float32)
+model.qvc.m_para.init_from_tensor(to_tensor(init_params))
+
 optimizer = SGD(model.parameters(), lr=0.1)
 batch_size = 3
 epoch = 20
@@ -308,7 +314,18 @@ qkmeans.run(n=100, std=2)
 
 ```python
 from pyvqnet.qnn.quantum_expressibility import fidelity_of_cir, fidelity_harr_sample
-from pyvqnet.qnn.ansatz import HardwareEfficientAnsatz
+from pyvqnet.qnn.pq3.ansatz import HardwareEfficientAnsatz
+from pyvqnet.tensor import tensor
+
+qlist = range(4)
+ansatz = HardwareEfficientAnsatz(
+    qlist, ["rx", "RY", "rz"],
+    entangle_gate="cnot",
+    entangle_rules="linear",
+    depth=1
+)
+w = tensor.ones([ansatz.get_para_num()])
+circuit = ansatz.create_ansatz(w)
 ```
 
 ### 完整代码
@@ -317,7 +334,7 @@ from pyvqnet.qnn.ansatz import HardwareEfficientAnsatz
 import numpy as np
 from scipy.stats import entropy
 from pyvqnet.qnn.quantum_expressibility import fidelity_of_cir, fidelity_harr_sample
-from pyvqnet.qnn.ansatz import HardwareEfficientAnsatz
+from pyvqnet.qnn.pq3.ansatz import HardwareEfficientAnsatz
 
 num_qubit = 4
 num_sample = 2000
@@ -477,4 +494,4 @@ for i in range(20):
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

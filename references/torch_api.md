@@ -8,7 +8,7 @@ After calling `pyvqnet.backends.set_backend("torch")`:
 - `QTensor.data` changes from `pyvqnet._core.Tensor` to `torch.Tensor`
 - You can use `to_tensor()` to wrap a `torch.Tensor` into `QTensor`
 - When using PyTorch backend, all neural network modules must inherit from `pyvqnet.nn.torch.TorchModule` instead of the default
-- Automatic differentiation variational quantum modules must inherit from `pyvqnet.qnn.vqc.torch.QModule`
+- Automatic differentiation variational quantum modules must inherit from `pyvqnet.qnn.vqc.sv.torch.QModule` (state vector) or `pyvqnet.qnn.vqc.tn.torch.TNQModule` (tensor network)
 - Calling `set_backend()` changes the **global** backend - QTensor created under different backends cannot interact with each other
 
 ## Backend Setting
@@ -339,10 +339,10 @@ Transposed 2D convolution for Torch backend. Does **not** support string padding
 ### Pooling Layers
 
 ```python
-pyvqnet.nn.torch.MaxPool1D(kernel, stride, padding=0, name="")
-pyvqnet.nn.torch.MaxPool2D(kernel, stride, padding=(0,0), name="")
-pyvqnet.nn.torch.AvgPool1D(kernel, stride, padding=0, name="")
-pyvqnet.nn.torch.AvgPool2D(kernel, stride, padding=(0,0), name="")
+pyvqnet.nn.torch.MaxPool1D(kernel, stride, padding=0, dtype=None, name="")
+pyvqnet.nn.torch.MaxPool2D(kernel, stride, padding=(0,0), dtype=None, name="")
+pyvqnet.nn.torch.AvgPool1D(kernel, stride, padding=0, dtype=None, name="")
+pyvqnet.nn.torch.AvgPool2D(kernel, stride, padding=(0,0), dtype=None, name="")
 pyvqnet.nn.torch.AdaptiveAvgPool2d(out_size, name="")
 ```
 
@@ -357,8 +357,8 @@ Standard pooling layers wrapping `torch.nn.functional`. All inherit from `TorchM
 pyvqnet.nn.torch.BatchNorm1d(channel_num, momentum=0.1, epsilon=1e-5, affine=True, ...)
 pyvqnet.nn.torch.BatchNorm2d(channel_num, momentum=0.1, epsilon=1e-5, affine=True, ...)
 pyvqnet.nn.torch.LayerNorm(normalized_shape, epsilon=1e-5, affine=True, ...)
-pyvqnet.nn.torch.LayerNorm1d(normalized_shape, epsilon=1e-5, affine=True, ...)
-pyvqnet.nn.torch.LayerNorm2d(normalized_shape, epsilon=1e-5, affine=True, ...)
+pyvqnet.nn.torch.LayerNorm1d(normalized_shape: Union[int, List[int], Tuple[int, ...]], epsilon=1e-5, affine=True, dtype=None, name="")
+pyvqnet.nn.torch.LayerNorm2d(normalized_shape: Union[int, List[int], Tuple[int, ...]], epsilon=1e-5, affine=True, dtype=None, name="")
 pyvqnet.nn.torch.LayerNormNd(normalized_shape, epsilon=1e-5, affine=True, ...)
 pyvqnet.nn.torch.GroupNorm(num_groups, num_channels, epsilon=1e-5, affine=True, ...)
 ```
@@ -379,7 +379,7 @@ Normalization layers for Torch backend. All inherit from `TorchModule` and wrap 
 ### Dropout Layers
 
 ```python
-pyvqnet.nn.torch.Dropout(dropout_rate=0.5, name="")
+pyvqnet.nn.torch.Dropout(dropout_rate: float = 0.5, name: str = "")
 pyvqnet.nn.torch.DropPath(dropout_rate=0.5, name="")
 ```
 
@@ -776,48 +776,47 @@ QMachine.reset_states(batchsize)
 所有逻辑门类共享如下签名（以 `I` 为例，其余仅类名不同）：
 
 ```python
-pyvqnet.qnn.vqc.sv.torch.I(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.Hadamard(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.T(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.S(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.PauliX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.PauliY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.PauliZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.X1(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CRX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CRY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CRZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.U1(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.U2(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.U3(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CNOT(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CR(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.SWAP(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.CSWAP(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RXX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RYY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RZZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.RZX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.Toffoli(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.IsingXX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.IsingYY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.IsingZZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.IsingXY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.PhaseShift(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.MultiRZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.SDG(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.TDG(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.ControlledPhaseShift(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.sv.torch.MultiControlledX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False,control_values=None)
+pyvqnet.qnn.vqc.sv.torch.I(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.Hadamard(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.T(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.S(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.PauliX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.PauliY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.PauliZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.X1(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CRX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CRY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CRZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.U1(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.U2(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.U3(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CNOT(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CR(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.SWAP(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.CSWAP(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RXX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RYY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RZZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.RZX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.Toffoli(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.IsingXX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.IsingYY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.IsingZZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.IsingXY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.PhaseShift(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.MultiRZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.SDG(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.TDG(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.ControlledPhaseShift(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.sv.torch.MultiControlledX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False,control_values=None)
 ```
 
 **Parameters (all gates):**
-- `has_params` - 是否具有参数，例如 RX,RY 等门需要设置为 True，不含参数的需要设置为 False，默认为 False
 - `trainable` - 是否自带含待训练参数，如果该层使用外部输入数据构建逻辑门矩阵，设置为 False，如果待训练参数需要从该层初始化，则为 True，默认为 False
 - `init_params` - 初始化参数，用来编码经典数据 QTensor，默认为 None
 - `wires` - 线路作用的比特索引，默认为 None
@@ -837,35 +836,35 @@ pyvqnet.qnn.vqc.sv.torch.MultiControlledX(has_params: bool = False,trainable: bo
 | `PauliY` | 定义一个PauliY逻辑门类 | `layer = PauliY(wires=0)` |
 | `PauliZ` | 定义一个PauliZ逻辑门类 | `layer = PauliZ(wires=0)` |
 | `X1` | 定义一个X1逻辑门类 | `layer = X1(wires=0)` |
-| `RX` | 定义一个RX逻辑门类 | `layer = RX(has_params= True, trainable= True, wires=0)` |
-| `RY` | 定义一个RY逻辑门类 | `layer = RY(has_params= True, trainable= True, wires=0)` |
-| `RZ` | 定义一个RZ逻辑门类 | `layer = RZ(has_params= True, trainable= True, wires=0)` |
-| `CRX` | 定义一个CRX逻辑门类 | `layer = CRX(has_params= True, trainable= True, wires=[0,2])` |
-| `CRY` | 定义一个CRY逻辑门类 | `layer = CRY(has_params= True, trainable= True, wires=[0,2])` |
-| `CRZ` | 定义一个CRZ逻辑门类 | `layer = CRZ(has_params= True, trainable= True, wires=[0,2])` |
-| `U1` | 定义一个U1逻辑门类 | `layer = U1(has_params= True, trainable= True, wires=0)` |
-| `U2` | 定义一个U2逻辑门类 | `layer = U2(has_params= True, trainable= True, wires=1)` |
-| `U3` | 定义一个U3逻辑门类 | `layer = U3(has_params= True, trainable= True, wires=1)` |
+| `RX` | 定义一个RX逻辑门类 | `layer = RX(trainable=True, wires=0)` |
+| `RY` | 定义一个RY逻辑门类 | `layer = RY(trainable=True, wires=0)` |
+| `RZ` | 定义一个RZ逻辑门类 | `layer = RZ(trainable=True, wires=0)` |
+| `CRX` | 定义一个CRX逻辑门类 | `layer = CRX(trainable=True, wires=[0,2])` |
+| `CRY` | 定义一个CRY逻辑门类 | `layer = CRY(trainable=True, wires=[0,2])` |
+| `CRZ` | 定义一个CRZ逻辑门类 | `layer = CRZ(trainable=True, wires=[0,2])` |
+| `U1` | 定义一个U1逻辑门类 | `layer = U1(trainable=True, wires=0)` |
+| `U2` | 定义一个U2逻辑门类 | `layer = U2(trainable=True, wires=1)` |
+| `U3` | 定义一个U3逻辑门类 | `layer = U3(trainable=True, wires=1)` |
 | `CNOT` | 定义一个CNOT逻辑门类,也可称为CX | `layer = CNOT(wires=[0,1])` |
 | `CY` | 定义一个CY逻辑门类 | `layer = CY(wires=[0,1])` |
 | `CZ` | 定义一个CZ逻辑门类 | `layer = CZ(wires=[0,1])` |
-| `CR` | 定义一个CR逻辑门类 | `layer = CR(has_params= True, trainable= True, wires=[0,2])` |
+| `CR` | 定义一个CR逻辑门类 | `layer = CR(trainable=True, wires=[0,2])` |
 | `SWAP` | 定义一个SWAP逻辑门类 | `layer = SWAP(wires=[0,1])` |
 | `CSWAP` | 定义一个CSWAP逻辑门类 | `layer = CSWAP(wires=[0,1,2])` |
-| `RXX` | 定义一个RXX逻辑门类 | `layer = RXX(has_params= True, trainable= True, wires=[0,2])` |
-| `RYY` | 定义一个RYY逻辑门类 | `layer = RYY(has_params= True, trainable= True, wires=[0,2])` |
-| `RZZ` | 定义一个RZZ逻辑门类 | `layer = RZZ(has_params= True, trainable= True, wires=[0,2])` |
-| `RZX` | 定义一个RZX逻辑门类 | `layer = RZX(has_params= True, trainable= True, wires=[0,2])` |
+| `RXX` | 定义一个RXX逻辑门类 | `layer = RXX(trainable=True, wires=[0,2])` |
+| `RYY` | 定义一个RYY逻辑门类 | `layer = RYY(trainable=True, wires=[0,2])` |
+| `RZZ` | 定义一个RZZ逻辑门类 | `layer = RZZ(trainable=True, wires=[0,2])` |
+| `RZX` | 定义一个RZX逻辑门类 | `layer = RZX(trainable=True, wires=[0,2])` |
 | `Toffoli` | 定义一个Toffoli逻辑门类 | `layer = Toffoli(wires=[0,2,1])` |
-| `IsingXX` | 定义一个IsingXX逻辑门类 | `layer = IsingXX(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingYY` | 定义一个IsingYY逻辑门类 | `layer = IsingYY(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingZZ` | 定义一个IsingZZ逻辑门类 | `layer = IsingZZ(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingXY` | 定义一个IsingXY逻辑门类 | `layer = IsingXY(has_params= True, trainable= True, wires=[0,2])` |
-| `PhaseShift` | 定义一个PhaseShift逻辑门类 | `layer = PhaseShift(has_params= True, trainable= True, wires=1)` |
-| `MultiRZ` | 定义一个MultiRZ逻辑门类 | `layer = MultiRZ(has_params= True, trainable= True, wires=[0,2])` |
+| `IsingXX` | 定义一个IsingXX逻辑门类 | `layer = IsingXX(trainable=True, wires=[0,2])` |
+| `IsingYY` | 定义一个IsingYY逻辑门类 | `layer = IsingYY(trainable=True, wires=[0,2])` |
+| `IsingZZ` | 定义一个IsingZZ逻辑门类 | `layer = IsingZZ(trainable=True, wires=[0,2])` |
+| `IsingXY` | 定义一个IsingXY逻辑门类 | `layer = IsingXY(trainable=True, wires=[0,2])` |
+| `PhaseShift` | 定义一个PhaseShift逻辑门类 | `layer = PhaseShift(trainable=True, wires=1)` |
+| `MultiRZ` | 定义一个MultiRZ逻辑门类 | `layer = MultiRZ(trainable=True, wires=[0,2])` |
 | `SDG` | 定义一个SDG逻辑门类 | `layer = SDG(wires=0)` |
 | `TDG` | 定义一个TDG逻辑门类 | `layer = TDG(wires=0)` |
-| `ControlledPhaseShift` | 定义一个ControlledPhaseShift逻辑门类 | `layer = ControlledPhaseShift(has_params= True, trainable= True, wires=[0,2])` |
+| `ControlledPhaseShift` | 定义一个ControlledPhaseShift逻辑门类 | `layer = ControlledPhaseShift(trainable=True, wires=[0,2])` |
 
 每个逻辑门示例均遵循同一模式：`set_backend("torch")` → `device.reset_states(batchsize)` → `layer(q_machine=device)` → 读取 `device.states`。以 Hadamard 为例：
 
@@ -904,7 +903,7 @@ print(qm.states)
 #### Probability
 
 ```python
-pyvqnet.qnn.vqc.sv.torch.Probability(wires=None, name="")
+pyvqnet.qnn.vqc.sv.torch.Probability(wires, name="")
 ```
 
 **Description:**
@@ -938,7 +937,7 @@ y =ma(q_machine=qm)
 #### MeasureAll
 
 ```python
-pyvqnet.qnn.vqc.sv.torch.MeasureAll(obs=None, name="")
+pyvqnet.qnn.vqc.sv.torch.MeasureAll(obs, name="")
 ```
 
 **Description:**
@@ -982,7 +981,7 @@ print(y)
 #### Samples
 
 ```python
-pyvqnet.qnn.vqc.sv.torch.Samples(wires=None, obs=None, shots = 1,name="")
+pyvqnet.qnn.vqc.sv.torch.Samples(wires=None, obs=None, shots=1, name="")
 ```
 
 **Description:**
@@ -1021,7 +1020,7 @@ print(y)
 #### HermitianExpval
 
 ```python
-pyvqnet.qnn.vqc.sv.torch.HermitianExpval(obs=None, name="")
+pyvqnet.qnn.vqc.sv.torch.HermitianExpval(obs, name="")
 ```
 
 **Description:**
@@ -1052,8 +1051,7 @@ class QModel(pyvqnet.nn.Module):
         self._dtype = dtype
         self.qm = QMachine(num_wires, dtype=dtype)
         self.rx_layer1 = VQC_RotCircuit
-        self.ry_layer2 = RY(has_params=True,
-                            trainable=True,
+        self.ry_layer2 = RY(trainable=True,
                             wires=0,
                             init_params=tensor.QTensor([-0.5]))
         self.xlayer = PauliX(wires=0)
@@ -1125,9 +1123,70 @@ vqc_basisrotation(q_machine=qm,
 print(qm.states)
 ```
 
+### QuantumLayerAdjoint
+
+```python
+pyvqnet.qnn.vqc.sv.torch.QuantumLayerAdjoint(vqc_module, name="")
+```
+
+**Description:**
+使用伴随矩阵方式进行梯度计算的可自动微分的变分量子线路层，参考 [Efficient calculation of gradients in classical simulations of variational quantum algorithms](https://arxiv.org/abs/2009.02823)。
+
+**Parameters:**
+- `vqc_module` - 一个仅使用 `pyvqnet.qnn.vqc.sv.torch` 下量子线路接口搭建的 `pyvqnet.qnn.vqc.sv.torch.QModule` 实例
+- `name` - 该层名字，默认为 `""`
+- **Returns:** 返回一个 `QuantumLayerAdjoint` 类实例
+
+**Note:**
+- `vqc_module` 的 `QMachine` 应设置 `grad_mode="adjoint"`
+- 当前支持由 `RX`、`RY`、`RZ`、`PhaseShift`、`RXX`、`RYY`、`RZZ`、`RZX`、`U1`、`U2`、`U3` 以及其他不含参逻辑门构成的变分线路
+
+**Example:**
+```python
+import pyvqnet
+pyvqnet.backends.set_backend("torch")
+from pyvqnet.qnn.vqc.sv.torch import QModule, QMachine, RX, RY, CNOT, MeasureAll, QuantumLayerAdjoint
+from pyvqnet.tensor import QTensor
+
+class QModel(QModule):
+    def __init__(self, num_wires):
+        super().__init__()
+        self.qm = QMachine(num_wires, grad_mode="adjoint")
+        self.rx = RX(trainable=True, wires=0)
+        self.ry = RY(trainable=False, wires=1)
+        self.cnot = CNOT(wires=[0, 1])
+        self.measure = MeasureAll(obs={"Z0 Z1": 1})
+
+    def forward(self, x):
+        self.qm.reset_states(x.shape[0])
+        self.rx(q_machine=self.qm)
+        self.ry(params=x[:, [0]], q_machine=self.qm)
+        self.cnot(q_machine=self.qm)
+        return self.measure(q_machine=self.qm)
+
+layer = QuantumLayerAdjoint(QModel(2))
+x = QTensor([[0.3], [0.7]], requires_grad=True)
+y = layer(x)
+y.backward(pyvqnet.tensor.ones_like(y))
+```
+
+### 量子线路模板与组合线路
+
+```python
+pyvqnet.qnn.vqc.sv.torch.VQC_BasicEntanglerTemplate(num_layers=1, num_qubits=1, rotation="RX", initial=None, dtype=None)
+pyvqnet.qnn.vqc.sv.torch.VQC_StronglyEntanglingTemplate(num_layers=1, num_qubits=1, ranges=None, initial=None, dtype=None)
+pyvqnet.qnn.vqc.sv.torch.vqc_crot_circuit(para, control_wire, rot_wire, q_machine)
+```
+
+- `VQC_BasicEntanglerTemplate` - 每个量子位上的单参数单量子比特旋转层，后接闭合链或环组合的多个 CNOT 门；`num_layers` 为线路层数
+- `VQC_StronglyEntanglingTemplate` - 单个量子比特旋转与纠缠器组成的层；`ranges` 决定每个后续层的范围超参数，默认 `None` 时对第 `l` 层、第 `M` 个量子比特使用 `r = l mod M`
+- `vqc_crot_circuit` - 受控 Rot 单量子比特旋转的量子逻辑门组合（别名 `VQC_CRotCircuit`）；`para` 为参数数组，`control_wire` 为控制量子比特索引，`rot_wire` 为 Rot 量子比特索引
+
+`pyvqnet.qnn.vqc.tn.torch` 下同名模板与 `vqc_crot_circuit` 的签名与上述一致。
+
 ### 其他 sv.torch 接口
 
-官方文档在 `pyvqnet.qnn.vqc.sv.torch` 下还提供（此处仅列名，签名见官方 RST）：`QuantumLayerAdjoint`、`VQC_HardwareEfficientAnsatz`、`VQC_BasicEntanglerTemplate`、`VQC_StronglyEntanglingTemplate`、`VQC_QuantumEmbedding`、`ExpressiveEntanglingAnsatz`，以及 `vqc_basis_embedding`、`vqc_angle_embedding`、`vqc_amplitude_embedding`、`vqc_iqp_embedding`、`vqc_rotcircuit`、`vqc_crot_circuit`、`vqc_controlled_hadamard`、`vqc_ccz`、`vqc_fermionic_single_excitation`、`vqc_fermionic_double_excitation`、`vqc_uccsd`、`vqc_zfeaturemap`、`vqc_zzfeaturemap`、`vqc_allsinglesdoubles` 等函数接口。
+官方文档在 `pyvqnet.qnn.vqc.sv.torch` 下还提供（此处仅列名，签名见官方 RST）：`VQC_HardwareEfficientAnsatz`、`VQC_QuantumEmbedding`、`ExpressiveEntanglingAnsatz`，以及 `vqc_basis_embedding`、`vqc_angle_embedding`、`vqc_amplitude_embedding`、`vqc_iqp_embedding`、`vqc_rotcircuit`、`vqc_controlled_hadamard`、`vqc_ccz`、`vqc_fermionic_single_excitation`、`vqc_fermionic_double_excitation`、`vqc_uccsd`、`vqc_zfeaturemap`、`vqc_zzfeaturemap`、`vqc_allsinglesdoubles` 等函数接口。
 
 ---
 
@@ -1146,16 +1205,22 @@ print(qm.states)
 ### TNQModule
 
 ```python
-pyvqnet.qnn.vqc.tn.torch.TNQModule(use_jit=False,vectorized_argnums=0,name="")
+pyvqnet.qnn.vqc.tn.torch.TNQModule(use_jit=True, vectorized_argnums: Union[int, Sequence[int]]=0, name="", mesh=None, cotengra_options=None, tree_path=None)
 ```
 
 **Description:**
 在 `torch` 后端下，定义张量网络下量子变分线路模型 `Module` 应该继承的基类。该类用于使用张量网络模块来执行量子线路。基于张量网络编写变分量子线路模型需要继承于 `TNQModule`。
 
+**Warning:**
+`TNQModule` 仅支持量子类型的子模块（`TNQMachine`、量子门、ansatz 模板、测量模块与编码模块）。经典神经网络层（例如 `Linear`）不可作为 `TNQModule` 的子模块：JIT 编译的对象是纯量子线路，其中的经典计算将被忽略，或在编译时被固定为常量。构建经典-量子混合模型时，应将经典层定义在外层 `QModule`/`torch.nn.Module` 中，并将 `TNQModule` 作为其子模块；如需不经 JIT 编译执行，可直接使用 `TNQMachine`。正确的组织方式参见各 ansatz 接口示例中 `QPart`/`QM` 的双层结构。
+
 **Parameters:**
-- `use_jit` - 开启即时编译功能，默认为 False
-- `vectorized_argnums` - 要被向量化的参数，这些参数应该在同一维共享相同的批次形状，默认值为 0
+- `use_jit` - 开启即时编译功能，默认为 True
+- `vectorized_argnums` - 要被向量化的参数，这些参数应该在同一维共享相同的批次形状，默认值为 0；可传入整数或整数序列
 - `name` - 模块名
+- `mesh` - 用于分布式收缩的 `jax.sharding.Mesh`。为 `None` 时使用单设备 JIT；指定 mesh 时通过 SPMD 实现模型并行
+- `cotengra_options` - 可选的字典，在指定 `mesh` 时传递给 `cotengra.ReusableHyperOptimizer`
+- `tree_path` - 可选的预计算收缩路径文件（`.pkl`），指定后将跳过运行时的 cotengra 搜索
 
 **Note:**
 - 开启 `use_jit` 后，模型会使用 `jax` 的 `jit` 进行即时编译，首次运行将会进行编译，会耗时较长
@@ -1270,45 +1335,45 @@ print(device.get_states())
 所有逻辑门类共享如下签名（以 `I` 为例，其余仅类名不同）：
 
 ```python
-pyvqnet.qnn.vqc.tn.torch.I(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.Hadamard(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.T(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.S(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.PauliX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.PauliY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.PauliZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CRX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CRY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CRZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.U1(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.U2(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.U3(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CNOT(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CR(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.SWAP(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.CSWAP(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RXX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RYY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RZZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.RZX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.Toffoli(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.IsingXX(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.IsingYY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.IsingZZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.IsingXY(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.PhaseShift(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.MultiRZ(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.SDG(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.TDG(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
-pyvqnet.qnn.vqc.tn.torch.ControlledPhaseShift(has_params: bool = False,trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.I(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.Hadamard(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.T(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.S(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.PauliX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.PauliY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.PauliZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CRX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CRY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CRZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.U1(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.U2(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.U3(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CNOT(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CR(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.SWAP(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.CSWAP(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RXX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RYY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RZZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.RZX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.Toffoli(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.IsingXX(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.IsingYY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.IsingZZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.IsingXY(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.PhaseShift(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.MultiRZ(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.SDG(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.TDG(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
+pyvqnet.qnn.vqc.tn.torch.ControlledPhaseShift(trainable: bool = False,init_params=None,wires=None,dtype=pyvqnet.kcomplex64,use_dagger=False)
 ```
 
-**Parameters (all gates):** 与 `pyvqnet.qnn.vqc.sv.torch` 逻辑门一致：`has_params` / `trainable` / `init_params` / `wires` / `dtype` / `use_dagger`（含义与默认值见上一节）。
+**Parameters (all gates):** 与 `pyvqnet.qnn.vqc.sv.torch` 逻辑门一致：`trainable` / `init_params` / `wires` / `dtype` / `use_dagger`（含义与默认值见上一节）。
 
 **Gate list and example instantiation (from official doc):**
 
@@ -1321,42 +1386,42 @@ pyvqnet.qnn.vqc.tn.torch.ControlledPhaseShift(has_params: bool = False,trainable
 | `PauliX` | 定义一个PauliX逻辑门类 | `layer = PauliX(wires=0)` |
 | `PauliY` | 定义一个PauliY逻辑门类 | `layer = PauliY(wires=0)` |
 | `PauliZ` | 定义一个PauliZ逻辑门类 | `layer = PauliZ(wires=0)` |
-| `RX` | 定义一个RX逻辑门类 | `layer = RX(has_params= True, trainable= True, wires=0)` |
-| `RY` | 定义一个RY逻辑门类 | `layer = RY(has_params= True, trainable= True, wires=0)` |
-| `RZ` | 定义一个RZ逻辑门类 | `layer = RZ(has_params= True, trainable= True, wires=0)` |
-| `CRX` | 定义一个CRX逻辑门类 | `layer = CRX(has_params= True, trainable= True, wires=[0,2])` |
-| `CRY` | 定义一个CRY逻辑门类 | `layer = CRY(has_params= True, trainable= True, wires=[0,2])` |
-| `CRZ` | 定义一个CRZ逻辑门类 | `layer = CRZ(has_params= True, trainable= True, wires=[0,2])` |
-| `U1` | 定义一个U1逻辑门类 | `layer = U1(has_params= True, trainable= True, wires=0)` |
-| `U2` | 定义一个U2逻辑门类 | `layer = U2(has_params= True, trainable= True, wires=0)` |
-| `U3` | 定义一个U3逻辑门类 | `layer = U3(has_params= True, trainable= True, wires=0)` |
+| `RX` | 定义一个RX逻辑门类 | `layer = RX(trainable=True, wires=0)` |
+| `RY` | 定义一个RY逻辑门类 | `layer = RY(trainable=True, wires=0)` |
+| `RZ` | 定义一个RZ逻辑门类 | `layer = RZ(trainable=True, wires=0)` |
+| `CRX` | 定义一个CRX逻辑门类 | `layer = CRX(trainable=True, wires=[0,2])` |
+| `CRY` | 定义一个CRY逻辑门类 | `layer = CRY(trainable=True, wires=[0,2])` |
+| `CRZ` | 定义一个CRZ逻辑门类 | `layer = CRZ(trainable=True, wires=[0,2])` |
+| `U1` | 定义一个U1逻辑门类 | `layer = U1(trainable=True, wires=0)` |
+| `U2` | 定义一个U2逻辑门类 | `layer = U2(trainable=True, wires=0)` |
+| `U3` | 定义一个U3逻辑门类 | `layer = U3(trainable=True, wires=0)` |
 | `CNOT` | 定义一个CNOT逻辑门类,也可称为CX | `layer = CNOT(wires=[0,1])` |
 | `CY` | 定义一个CY逻辑门类 | `layer = CY(wires=[0,1])` |
 | `CZ` | 定义一个CZ逻辑门类 | `layer = CZ(wires=[0,1])` |
-| `CR` | 定义一个CR逻辑门类 | `layer = CR(has_params= True, trainable= True, wires=[0,2])` |
+| `CR` | 定义一个CR逻辑门类 | `layer = CR(trainable=True, wires=[0,2])` |
 | `SWAP` | 定义一个SWAP逻辑门类 | `layer = SWAP(wires=[0,1])` |
 | `CSWAP` | 定义一个CSWAP逻辑门类 | `layer = CSWAP(wires=[0,1,2])` |
-| `RXX` | 定义一个RXX逻辑门类 | `layer = RXX(has_params= True, trainable= True, wires=[0,2])` |
-| `RYY` | 定义一个RYY逻辑门类 | `layer = RYY(has_params= True, trainable= True, wires=[0,2])` |
-| `RZZ` | 定义一个RZZ逻辑门类 | `layer = RZZ(has_params= True, trainable= True, wires=[0,2])` |
-| `RZX` | 定义一个RZX逻辑门类 | `layer = RZX(has_params= True, trainable= True, wires=[0,2])` |
+| `RXX` | 定义一个RXX逻辑门类 | `layer = RXX(trainable=True, wires=[0,2])` |
+| `RYY` | 定义一个RYY逻辑门类 | `layer = RYY(trainable=True, wires=[0,2])` |
+| `RZZ` | 定义一个RZZ逻辑门类 | `layer = RZZ(trainable=True, wires=[0,2])` |
+| `RZX` | 定义一个RZX逻辑门类 | `layer = RZX(trainable=True, wires=[0,2])` |
 | `Toffoli` | 定义一个Toffoli逻辑门类 | `layer = Toffoli(wires=[0,2,1])` |
-| `IsingXX` | 定义一个IsingXX逻辑门类 | `layer = IsingXX(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingYY` | 定义一个IsingYY逻辑门类 | `layer = IsingYY(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingZZ` | 定义一个IsingZZ逻辑门类 | `layer = IsingZZ(has_params= True, trainable= True, wires=[0,2])` |
-| `IsingXY` | 定义一个IsingXY逻辑门类 | `layer = IsingXY(has_params= True, trainable= True, wires=[0,2])` |
-| `PhaseShift` | 定义一个PhaseShift逻辑门类 | `layer = PhaseShift(has_params= True, trainable= True, wires=1)` |
-| `MultiRZ` | 定义一个MultiRZ逻辑门类 | `layer = MultiRZ(has_params= True, trainable= True, wires=[0,2])` |
+| `IsingXX` | 定义一个IsingXX逻辑门类 | `layer = IsingXX(trainable=True, wires=[0,2])` |
+| `IsingYY` | 定义一个IsingYY逻辑门类 | `layer = IsingYY(trainable=True, wires=[0,2])` |
+| `IsingZZ` | 定义一个IsingZZ逻辑门类 | `layer = IsingZZ(trainable=True, wires=[0,2])` |
+| `IsingXY` | 定义一个IsingXY逻辑门类 | `layer = IsingXY(trainable=True, wires=[0,2])` |
+| `PhaseShift` | 定义一个PhaseShift逻辑门类 | `layer = PhaseShift(trainable=True, wires=1)` |
+| `MultiRZ` | 定义一个MultiRZ逻辑门类 | `layer = MultiRZ(trainable=True, wires=[0,2])` |
 | `SDG` | 定义一个SDG逻辑门类 | `layer = SDG(wires=0)` |
 | `TDG` | 定义一个TDG逻辑门类 | `layer = TDG(wires=0)` |
-| `ControlledPhaseShift` | 定义一个ControlledPhaseShift逻辑门类 | `layer = ControlledPhaseShift(has_params= True, trainable= True, wires=[0,2])` |
+| `ControlledPhaseShift` | 定义一个ControlledPhaseShift逻辑门类 | `layer = ControlledPhaseShift(trainable=True, wires=[0,2])` |
 
 注意：tn.torch 后端不提供 `X1` 与 `MultiControlledX` 门（相比 sv.torch）。
 
 ### MeasureAll
 
 ```python
-pyvqnet.qnn.vqc.tn.torch.MeasureAll(obs=None, name="")
+pyvqnet.qnn.vqc.tn.torch.MeasureAll(obs, name="")
 ```
 
 **Description:**
@@ -1391,7 +1456,7 @@ print(y)
 ### vqc_basisrotation
 
 ```python
-pyvqnet.qnn.vqc.tn.vqc_basisrotation(q_machine: pyvqnet.qnn.vqc.tn.torch.TNQMachine, wires, unitary_matrix: QTensor, check=False)
+pyvqnet.qnn.vqc.tn.torch.vqc_basisrotation(q_machine: pyvqnet.qnn.vqc.tn.torch.TNQMachine, wires, unitary_matrix: QTensor, check=False)
 ```
 
 **Description:**
@@ -1431,7 +1496,26 @@ print(qm.get_states())
 
 ### 其他 tn.torch 接口
 
-官方文档在 `pyvqnet.qnn.vqc.tn.torch` / `pyvqnet.qnn.vqc.tn` 下还提供（此处仅列名，签名见官方 RST）：测量类 `Probability`、`Samples`、`HermitianExpval`，测量函数 `VQC_Purity`、`VQC_VarMeasure`、`VQC_DensityMatrixFromQstate`，模板类 `VQC_HardwareEfficientAnsatz`、`VQC_BasicEntanglerTemplate`、`VQC_StronglyEntanglingTemplate`、`VQC_QuantumEmbedding`、`ExpressiveEntanglingAnsatz`，以及 `vqc_basis_embedding`、`vqc_angle_embedding`、`vqc_iqp_embedding`、`vqc_rotcircuit`、`vqc_crot_circuit`、`vqc_controlled_hadamard`、`vqc_ccz`、`vqc_fermionic_single_excitation`、`vqc_fermionic_double_excitation`、`vqc_uccsd`、`vqc_zfeaturemap`、`vqc_zzfeaturemap`、`vqc_allsinglesdoubles` 等函数接口。
+测量类与测量函数签名：
+
+```python
+pyvqnet.qnn.vqc.tn.torch.Probability(wires, name="")
+pyvqnet.qnn.vqc.tn.torch.HermitianExpval(obs, name="")
+pyvqnet.qnn.vqc.tn.torch.Samples(wires=None, obs=None, shots=1, name="")
+pyvqnet.qnn.vqc.tn.torch.VQC_Purity(qubits_idx, num_wires, qmachine)
+pyvqnet.qnn.vqc.tn.torch.VQC_DensityMatrixFromQstate(indices, num_wires, qmachine)
+pyvqnet.qnn.vqc.tn.torch.VQC_VarMeasure(q_machine, obs)
+```
+
+模板类与组合线路函数签名：
+
+```python
+pyvqnet.qnn.vqc.tn.torch.VQC_BasicEntanglerTemplate(num_layers=1, num_qubits=1, rotation="RX", initial=None, dtype=None)
+pyvqnet.qnn.vqc.tn.torch.VQC_StronglyEntanglingTemplate(num_layers=1, num_qubits=1, ranges=None, initial=None, dtype=None)
+pyvqnet.qnn.vqc.tn.torch.vqc_crot_circuit(para, control_wire, rot_wire, q_machine)
+```
+
+官方文档在 `pyvqnet.qnn.vqc.tn.torch` 下还提供（此处仅列名，签名见官方 RST）：模板类 `VQC_HardwareEfficientAnsatz`、`VQC_QuantumEmbedding`、`ExpressiveEntanglingAnsatz`，以及 `vqc_basis_embedding`、`vqc_angle_embedding`、`vqc_iqp_embedding`、`vqc_rotcircuit`、`vqc_controlled_hadamard`、`vqc_ccz`、`vqc_fermionic_single_excitation`、`vqc_fermionic_double_excitation`、`vqc_uccsd`、`vqc_zfeaturemap`、`vqc_zzfeaturemap`、`vqc_allsinglesdoubles` 等函数接口。
 
 **Dependencies (TN backend):**
 
@@ -1453,6 +1537,89 @@ pip install tensornetwork
 使用 pyqpanda3 进行线路计算的训练变分量子线路接口。以下接口的量子计算部分使用 pyqpanda3 <https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/>。
 
 **Warning:** 需要安装最新版本 pyqpanda3。
+
+### TorchVQCLayer
+
+```python
+pyvqnet.qnn.pq3.torch.torchvqclayer.TorchVQCLayer(
+    vqc_module,
+    qcloud_token=None,
+    shots=1000,
+    diff_method="parameter_shift",
+    submit_kwargs=None,
+    query_kwargs=None,
+    name="",
+)
+```
+
+**Description:**
+`TorchVQCLayer` 是 torch 后端的统一量子层接口，与原生 `VQCLayer` 功能一致，将包含 `QMachine` 的 torch 后端 VQC Module 包装为可训练的量子层。通过 `submit_kwargs["backend"]` 选择执行后端：
+
+| 后端 | 说明 |
+|------|------|
+| `vqnet_native`（默认） | 在 torch 后端本地通过 VQC autograd 计算梯度，不进行线路提交 |
+| `qcloud_fake` | 提交到本地 pyqpanda3 QVM（FakeBackend）模拟器，使用参数移位法计算梯度 |
+| `qpanda_runtime` | 提交到 qpanda3_runtime 真实芯片 |
+| `qcloud_service` | 提交到 QCloud 真实芯片；`submit_kwargs["test_qcloud_fake"]=True` 可在本地模拟器干跑同一 OriginIR 路径，无需消耗芯片额度 |
+
+测量由该层统一管理，两种测量方式互斥：`submit_kwargs["pauli_str_dict"]` 为期望值测量，`query_kwargs["measure_qubits"]` 为概率测量，同时指定或都不指定会抛出 `ValueError`。
+
+当启用 `pauli_str_dict` 时，可通过 `submit_kwargs["shadow_config"]` 选择经典影子测量（Classical Shadow）：
+
+- `shadow_config=0`（默认）- 完整测量（MeasureAll），精确期望值
+- `shadow_config=1` - 随机经典影子；`shots` 表示总快照数 T，每个快照电路运行 1 shot
+- `shadow_config=2` - 去随机化经典影子；`shots` 表示调度长度 N，贪心调度生成 N 个电路，每个 1 shot
+
+经典影子在 `vqnet_native` 和提交后端（`qcloud_fake` / `qcloud_service`）上均可用，但不支持 `qpanda_runtime`（抛出 `ValueError`）。梯度路径：`vqnet_native` 使用 VQC 模块的原生自动微分；提交后端使用 mode-0 电路的参数移位法。
+
+**Parameters:**
+- `vqc_module` - 包含 `save_ir=True` 的 `QMachine` 的 torch 后端 VQC Module（`TorchModule`）
+- `qcloud_token` - `str|None` - 提交后端的 QCloud token，`vqnet_native` 后端忽略此参数，默认 None
+- `shots` - `int` - 测量次数，默认 1000
+- `diff_method` - `str` - 梯度计算方法，默认 `"parameter_shift"`，可选 `"random_coordinate_descent"`
+- `submit_kwargs` - `dict|None` - 执行与测量设置，包括 `backend`、`pauli_str_dict`、`shadow_config`、`shadow_seed`、`noise_model`（`QCloudNoiseModel` 噪声模型）等
+- `query_kwargs` - `dict|None` - 查询设置，包括 `measure_qubits`、`total_timeout`、`timeout`、`print_query_info`、`sub_circuits_split_size` 等
+- `name` - `str` - 模块名称，默认 `""`
+- **Returns:** 一个可以计算量子线路的统一量子层
+
+**Note:**
+- 使用前必须先设置 torch 后端：`pyvqnet.backends.set_backend("torch")`
+- `vqc_module` 必须包含 `save_ir=True` 的 `QMachine`，提交后端需要据此构建 OriginIR，例如 `QMachine(num_wires, dtype=dtype, save_ir=True)`
+- `submit_kwargs` / `query_kwargs` 的完整键表（含噪声模型、日志与配置透传）见 [`quantum_layers.md`](quantum_layers.md) 的 “VQCLayer（统一量子层）” 一节
+
+**Example:**
+```python
+import pyvqnet
+
+pyvqnet.backends.set_backend("torch")
+import torch
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc.sv.torch import QMachine, RY, TorchModule
+from pyvqnet.qnn.pq3.torch import TorchVQCLayer
+
+class QModel(TorchModule):
+    def __init__(self):
+        super().__init__()
+        self.qm = QMachine(2, save_ir=True)
+        self.ry_w = RY(trainable=True, wires=0, init_params=QTensor([[0.4]]))
+        self.ry_x = RY(trainable=False, wires=1)
+
+    def forward(self, x):
+        self.qm.reset_states(x.shape[0])
+        self.ry_w(q_machine=self.qm)
+        self.ry_x(params=x[:, [0]], q_machine=self.qm)
+        return x
+
+layer = TorchVQCLayer(
+    QModel(),
+    submit_kwargs={"backend": "vqnet_native", "pauli_str_dict": {"Z0 Z1": 1}},
+)
+x = QTensor([[0.3], [0.7]], requires_grad=True)
+y = layer(x)
+y.backward(torch.ones_like(y))
+print(y)          # Z0*Z1 期望值，形状 (2, 1)
+print(x.grad)     # d<Z0 Z1>/dx
+```
 
 ### TorchQcloud3QuantumLayer
 
@@ -1488,7 +1655,7 @@ pyvqnet.qnn.pq3.torch.qpanda3_layer.TorchQcloud3QuantumLayer(origin_qprog_func, 
 ```python
 import pyqpanda3.core as pq
 import pyvqnet
-from pyvqnet.qnn.vqc.sv.torch import TorchQcloud3QuantumLayer
+from pyvqnet.qnn.pq3.torch import TorchQcloud3QuantumLayer
 
 pyvqnet.backends.set_backend("torch")
 def qfun(input,param):
@@ -1551,7 +1718,7 @@ pyvqnet.qnn.pq3.torch.qpanda3_layer.TorchQpanda3QuantumLayer(qprog_with_measure,
 - **Returns:** 一个可以计算量子线路的模块
 
 **Note:**
-`qprog_with_measure` 是 pyQPanda 中定义的量子线路函数（参见 <https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/>）。此函数必须包含以下参数作为函数入参（即使某个参数未实际使用），否则无法在本函数中正常运行：`input` 输入一维经典数据，如果没有输入 None；`param` 输入一维的变分量子线路的待训练参数。
+`qprog_with_measure` 是 pyQPanda3 中定义的量子线路函数（参见 <https://qcloud.originqc.com.cn/document/pyqpanda3-docs/zh/>）。此函数必须包含以下参数作为函数入参（即使某个参数未实际使用），否则无法在本函数中正常运行：`input` 输入一维经典数据，如果没有输入 None；`param` 输入一维的变分量子线路的待训练参数。
 
 **Example:**
 ```python
@@ -1561,7 +1728,7 @@ import numpy as np
 from pyvqnet.tensor import QTensor
 import pyvqnet
 pyvqnet.backends.set_backend("torch")
-from pyvqnet.qnn.vqc.sv.torch import TorchQpanda3QuantumLayer
+from pyvqnet.qnn.pq3.torch import TorchQpanda3QuantumLayer
 def pqctest (input,param):
     num_of_qubits = 4
 
@@ -1616,8 +1783,6 @@ print(pqc.m_para.grad)
 print(input.grad)
 ```
 
-**Note:** 2.18.1 版本 changelog 中还提及 `TorchQpandaQuantumLayer`（对接 qpanda 模拟器的 pq3 torch 量子层），但其 API 参考签名未收录于 2.18.1 的 `torch_api.rst` 文档中，此处不作记载。
-
 ---
 
 ## Torch Backend Utilities (`pyvqnet.torch`)
@@ -1664,13 +1829,58 @@ pyvqnet.torch.TorchWrapperBackend      # "torch" backend (QTensor wrapping torch
 pyvqnet.torch.TorchNativeBackend       # "torch-native" backend (direct torch.Tensor)
 ```
 
-### Distributed
+## 分布式接口（torch 后端）
+
+使用 `torch` 计算后端时，分布式功能封装使用 `torch.distributed`，同样通过 `CommController` 控制。
+
+### CommController
 
 ```python
-from pyvqnet.torch._distributed import *
+pyvqnet.distributed.ControlComm.CommController(backend, rank=None, world_size=None)
 ```
 
-Torch distributed backend functions for multi-GPU training. See `distributed.md` for details.
+**Description:**
+`CommController` 用于控制在 CPU、GPU 下的数据通信，通过 `backend` 生成 CPU（`gloo`）或 GPU（`nccl`）的控制器。该类会调用 `torch.distributed.init_process_group(backend, rank=rank, world_size=world_size)` 初始化进程组。
+
+**Parameters:**
+- `backend` - `str` - 用于生成 CPU 或 GPU 数据通信控制器，`'gloo'` 或 `'nccl'`
+- `rank` - 当前程序所在的进程号
+- `world_size` - 全局所有的进程数量
+- **Returns:** `CommController` 实例
+
+**Note:**
+- 请参考 [torch 分布式接口](https://pytorch.org/docs/stable/distributed.html) 中启动分布式的方法启动
+- CPU 上进行分布式请使用 `gloo` 配置 backend；GPU 上请使用 `nccl`
+- `vqnet_dist` 下 VQNet 自己实现的分布式接口不适用于 `torch` 计算后端
+
+**Example:**
+```python
+from pyvqnet.distributed import CommController
+import pyvqnet
+import os
+import multiprocessing as mp
+
+pyvqnet.backends.set_backend("torch")
+
+def init_process(rank, size):
+    """Initialize the distributed environment."""
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '29500'
+    os.environ['LOCAL_RANK'] = f"{rank}"
+    pp = CommController("gloo", rank=rank, world_size=size)
+    print(pp.getRank())
+
+if __name__ == "__main__":
+    world_size = 2
+    processes = []
+    mp.set_start_method("spawn")
+    for rank in range(world_size):
+        p = mp.Process(target=init_process, args=(rank, world_size))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
+```
 
 ---
 
@@ -1727,4 +1937,4 @@ for epoch in range(10):
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

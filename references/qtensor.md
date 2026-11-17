@@ -10,10 +10,8 @@
 pyvqnet.tensor.tensor.QTensor(
     data,
     requires_grad=False,
-    nodes=None,
     device=pyvqnet.DEV_CPU,
-    dtype=None,
-    name=""
+    dtype=None
 )
 ```
 
@@ -177,7 +175,7 @@ print(t.item())
 # 1.0
 ```
 
-### reshape(new_shape)
+### reshape(shape)
 改变形状。
 
 ```python
@@ -322,17 +320,29 @@ print(t)
 # [ 2.,  6., 10., 14., 18., 22., 26.]
 ```
 
-### linspace(start, end, num, device=DEV_CPU, dtype=None, requires_grad=False)
+### linspace(start, end, nums, device=DEV_CPU, dtype=None, requires_grad=False)
 创建线性间隔序列。
 
 ```python
 from pyvqnet.tensor import tensor, QTensor
 
-start, stop, num = -2.5, 10, 10
-t = tensor.linspace(start, stop, num)
+start, stop, nums = -2.5, 10, 10
+t = tensor.linspace(start, stop, nums)
 print(t)
 # [-2.5000000, -1.1111112, 0.2777777, 1.6666665, 3.0555553,
 #  4.4444442, 5.8333330, 7.2222219, 8.6111107, 10.]
+```
+
+### logspace(start, end, nums, base, device=DEV_CPU, dtype=None, requires_grad=False)
+在对数刻度上创建具有均匀间隔值的一维 QTensor。
+
+```python
+from pyvqnet.tensor import tensor, QTensor
+
+start, stop, steps, base = 0.1, 1.0, 5, 10.0
+t = tensor.logspace(start, stop, steps, base)
+print(t)
+# [1.2589254, 2.1134889, 3.5481336, 5.9566211, 10.]
 ```
 
 ### randn(shape, mean=0.0, std=1.0, device=DEV_CPU, dtype=None, requires_grad=False)
@@ -471,6 +481,18 @@ print(tensor.ceil(t))
 ### permute
 维度重排。
 
+### moveaxis(t, src, dst)
+将 `t` 的维度从 `src` 中的位置移动到 `dst` 中的位置，未移动的维度保持原始顺序。
+
+```python
+from pyvqnet import QTensor, tensor
+
+a = tensor.arange(0, 24).reshape((2, 3, 4))
+b = tensor.moveaxis(a, (1, 2), (0, 1))
+print(b.shape)
+# [3, 4, 2]
+```
+
 ### flatten
 展平。
 
@@ -508,6 +530,25 @@ print(c)
 # [1., 1., 1.]
 ```
 
+### scatter(input, dim, indices, src)
+将张量 `src` 中的所有值写入 `indices` 张量中指定的索引处的 `input` 中。
+
+```python
+from pyvqnet.tensor import scatter, QTensor
+import numpy as np
+
+np.random.seed(25)
+npx = np.random.randn(3, 2, 4, 2)
+npindex = np.array([2, 3, 1, 2, 1, 2, 3, 0, 2, 3, 1, 2, 3, 2, 0,
+                    1]).reshape([2, 2, 4, 1]).astype(np.int64)
+x1 = QTensor(npx)
+npsrc = QTensor(np.full_like(npindex, 200), dtype=x1.dtype)
+npsrc.requires_grad = True
+indices1 = QTensor(npindex)
+y1 = scatter(x1, 2, indices1, npsrc)
+print(y1)
+```
+
 ---
 
 ## 常见问题
@@ -518,4 +559,4 @@ print(c)
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

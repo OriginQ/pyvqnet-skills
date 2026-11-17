@@ -215,4 +215,4 @@ sh cli.sh
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

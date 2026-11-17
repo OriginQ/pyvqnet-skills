@@ -302,11 +302,11 @@ optimizer._step()
 
 ### Q: VQNet 有哪些特性？
 
-VQNet 是基于本源量子 pyQPanda 开发的量子机器学习工具集。提供丰富、易用的经典神经网络计算模块接口，可以方便地进行机器学习的优化，模型定义方式与主流机器学习框架一致，降低了用户学习成本。
+VQNet 是基于本源量子 pyQPanda3 开发的量子机器学习工具集。提供丰富、易用的经典神经网络计算模块接口，可以方便地进行机器学习的优化，模型定义方式与主流机器学习框架一致，降低了用户学习成本。
 
 ### Q: 如何使用 VQNet 进行量子机器学习模型训练？
 
-1. 通过 pyQPanda 构建虚拟机，结合 VQNet 接口构建量子、量子经典混合模型 `Module`
+1. 通过 pyQPanda3 构建虚拟机，结合 VQNet 接口构建量子、量子经典混合模型 `Module`
 2. 调用 `forward()` 进行量子线路模拟以及经典神经网络前向运算
 3. 调用 `backward()` 进行自动微分，计算参数梯度
 4. 结合优化器的 `_step()`（或等价的 `step()`）进行参数优化
@@ -326,34 +326,35 @@ VQNet 不依赖 PyTorch，也不自动安装 PyTorch。
 
 ---
 
-## v2.18.1 新特性
+## v2.18.2 新特性
 
-VQNet v2.18.1 引入以下重要特性：
+VQNet v2.18.2 引入/调整以下重要特性：
 
-### Torch 原生后端（v2.15.0+）
-支持 PyTorch 作为计算后端，无缝切换：
-```python
-import pyvqnet.backends
-pyvqnet.backends.set_backend("torch")
-```
+### VQCLayer / TorchVQCLayer 统一量子层
+- `pyvqnet.qnn.pq3.vqclayer.VQCLayer` 与 `pyvqnet.qnn.pq3.torch.TorchVQCLayer`，通过 `submit_kwargs["backend"]` 选择 `vqnet_native`（原 `vqc_autograd`）、`qcloud_fake`、`qcloud_service`、`qpanda_runtime` 四种执行后端。
+- 支持期望值（`pauli_str_dict`）与概率（`measure_qubits`）两种互斥测量方式。
 
-### 分布式训练增强
-- **Pipeline Parallel**: 流水线并行，支持跨设备分层调度
-- **Tensor Parallel**: 张量并行，大模型训练支持
-- **ZeRO Optimization**: 零冗余优化器，基于 `pydantic` 配置
+### 混合并行分布式训练
+- 新增 `pyvqnet.distributed.hybrid.ParallelTrainingWrapper`，可将经典层与 VQC 混合编排为经典流水线并行（PP）、数据并行（DP）与比特并行。
 
-### VQC 自动微分增强
-- **VQC Adjoint Gradient**: 伴随法梯度计算，相比参数平移法提速 2×
-- **QNG (Quantum Natural Gradient)**: 量子自然梯度优化器
-- **QNSPSA**: 量子同时扰动随机逼近优化器
+### 分布式后端
+- 移除 MPI 后端，CPU 集合通信统一使用 `gloo`；`CommController` 默认 backend 从 `mpi` 改为 `gloo`。
+- GPU 通信使用 NCCL（随包附带）；`vqnetrun` 启动时需提供 `--nproc_per_node`。
 
-### 量子计算新特性
-- **Block Encoding**: 块编码，支持量子矩阵的稀疏编码与线性组合
-- **LLM Token Sampling**: 量子大模型 token 采样器（Top-K, Top-P, Temperature）
+### 量子接口同步
+- 量子逻辑门类移除 `has_params` 参数，`trainable` 调整为第一位置参数；可训练门写作 `RX(trainable=True, wires=0)`。
+- `QTensor` 移除 `name`、`nodes` 参数。
+- `QuantumLayerAdjoint` 移除 `use_qpanda` 参数，`general_module` 重命名为 `vqc_module`。
+- `TNQModule` 新增 `mesh`、`cotengra_options`、`tree_path` 参数，并修正 `use_jit` 默认值。
+- `ConvT2D` 的 `padding` 不再支持 `"same"`，仅支持 `"valid"` 或整数元组。
+
+### 文档与其他
+- `QiskitLayer` / `CirqLayer` 接口文档同步；`SPSA`（`pyvqnet.qnn`）与 `QNSPSAOptimizer` 优化器文档同步，`SPSA._step()` 梯度更新问题修复。
+- 文档中 `pyQPanda` 相关表述统一更新为 `pyQPanda3`。
 
 ### bfloat16 支持
 新增 `kbfloat16` dtype（v2.18.0+），支持 bfloat16 混合精度训练，降低显存占用。
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

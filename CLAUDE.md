@@ -1,12 +1,12 @@
-# CLAUDE.md - VQNet 2.18.1 API Skill
+# CLAUDE.md - VQNet 2.18.2 API Skill
 
 ## Project Overview
 
-**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.18.1 (PyVQNet) with pyqpanda3. Provides complete API reference extracted from official documentation.
+**Purpose**: AI skill package for helping users develop quantum machine learning models using VQNet 2.18.2 (PyVQNet) with pyqpanda3. Provides complete API reference extracted from official documentation.
 
-**Primary Framework**: VQNet 2.18.1 (PyVQNet) with pyqpanda3 for quantum computing.
+**Primary Framework**: VQNet 2.18.2 (PyVQNet) with pyqpanda3 for quantum computing.
 
-**Target Users**: AI assistants (Claude/Cline) helping users with quantum machine learning using VQNet 2.18.1.
+**Target Users**: AI assistants (Claude/Cline) helping users with quantum machine learning using VQNet 2.18.2.
 
 **License**: Apache 2.0
 
@@ -31,11 +31,12 @@
 Use this skill when user mentions:
 - VQNet, pyvqnet, QTensor
 - QuantumLayer, VQC, pyqpanda3
+- VQCLayer, TorchVQCLayer, QiskitLayer, CirqLayer, SPSA
 - Quantum neural networks, variational quantum circuits
 - Quantum machine learning, QVC, VSQL, Quanvolution
 - Hybrid quantum-classical models
 - GPU training with VQNet
-- Distributed quantum ML training
+- Distributed quantum ML training with gloo (CPU) / NCCL (GPU), ParallelTrainingWrapper
 
 ---
 
@@ -47,13 +48,13 @@ Use this skill when user mentions:
 | QTensor API | `references/qtensor.md` |
 | 经典神经网络 (Module, Linear, Conv, Loss, Optimizer) | `references/classic_nn.md` |
 | 工具函数 (随机种子/初始化器) | `references/utils.md` |
-| QuantumLayer (pyqpanda3) | `references/quantum_layers.md` |
+| QuantumLayer (pyqpanda3) / VQCLayer / TorchVQCLayer | `references/quantum_layers.md` |
 | VQC 自动微分模块 | `references/vqc.md` |
 | 量子测量与熵函数 | `references/measurement.md` |
 | QNN 架构总览与最佳实践 | `references/qnn.md` |
 | 量子电路模板与拟设 | `references/quantum_templates.md` |
 | QML Demo 示例 | `references/qml_demos.md` |
-| 分布式训练 | `references/distributed.md` |
+| 分布式训练 (gloo/NCCL, ParallelTrainingWrapper) | `references/distributed.md` |
 | 量子大模型微调 | `references/quantum_llm.md` |
 | PyTorch 后端切换 | `references/torch_api.md` |
 | 大模型算子与 trl 微调损失 | `references/llm_ops.md` |
@@ -81,13 +82,13 @@ pyvqnet-skills/
     ├── qtensor.md               # QTensor 完整 API
     ├── classic_nn.md            # Module, Linear, Conv2D, Loss, Optimizer
     ├── utils.md                 # 随机种子 / 初始化器
-    ├── quantum_layers.md        # QuantumLayer, QpandaQProgVQCLayer
+    ├── quantum_layers.md        # QuantumLayer / VQCLayer / TorchVQCLayer
     ├── vqc.md                   # VQC 自动微分 API
     ├── measurement.md           # 量子测量与熵函数
     ├── qnn.md                   # QNN 架构总览与最佳实践
     ├── quantum_templates.md     # 量子电路模板与拟设
     ├── qml_demos.md             # QVC, QDRL, Quanvolution 示例
-    ├── distributed.md           # MPI/NCCL 分布式训练
+    ├── distributed.md           # gloo/NCCL 分布式训练（含 ParallelTrainingWrapper）
     ├── quantum_llm.md           # 量子大模型微调
     ├── torch_api.md             # PyTorch 后端 / sv.torch / tn.torch
     └── llm_ops.md               # 大模型算子 + trl 微调损失
@@ -152,8 +153,9 @@ labels = QTensor([0, 1, 2], dtype=kint64)
 5. **QCloud Token**: 使用 `os.getenv("QCLOUD_TOKEN")`，不要硬编码
 6. **混合后端**: 不同 backend 的 QTensor 不能混用
 7. **GPU 训练**: 数据和模型都要移动到 GPU
-8. **VQCQCloudLayer**: QMachine 必须设置 `save_ir=True`，不能使用 `MeasureAll`
-9. **NoiseQuantumLayer**: 电路函数签名需 `(input, param, qubits, cbits, m_machine)`
+8. **VQCLayer / VQCQCloudLayer**: `QMachine` 必须设置 `save_ir=True`；`VQCLayer` 的 `pauli_str_dict`（期望值）与 `measure_qubits`（概率）互斥，`VQCQCloudLayer` 仅支持 `pauli_str_dict` 且不能使用 `MeasureAll`；`submit_kwargs["backend"]` 使用 `vqnet_native`（2.18.2 起，不再是 `vqc_autograd`）
+9. **已移除的 `has_params`**: 2.18.2 移除了 VQC 门类的 `has_params`，可训练门使用 `trainable=True`（第一位置参数），如 `RX(trainable=True, wires=0)`
+10. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
 
 ---
 
@@ -164,8 +166,7 @@ pip install pyvqnet
 pip install pyqpanda3
 # Optional:
 pip install torch  # PyTorch backend（需自行安装，官方基准 torch 2.11.0+cu126 验证）
-conda install conda-forge::mpich-mpicxx==4.1.2  # 分布式 CPU
-pip install mpi4py  # 分布式 CPU
+# 分布式：CPU 使用内置 gloo（无需额外安装）；GPU 使用随包附带的 NCCL
 ```
 
 ---
@@ -182,8 +183,9 @@ Before generating VQNet code:
 - [ ] 子模块使用 `ModuleList`
 - [ ] 无硬编码 QCloud Token
 - [ ] GPU 模型和数据都移动到 GPU
-- [ ] VQCQCloudLayer 中 save_ir=True 且不用 MeasureAll
-- [ ] NoiseQuantumLayer 电路函数包含 (input, param, qubits, cbits, m_machine)
+- [ ] VQCLayer 中 save_ir=True 且 pauli_str_dict/measure_qubits 只选一种
+- [ ] VQCQCloudLayer 中 save_ir=True 且不使用 MeasureAll
+- [ ] VQC 门类未使用已移除的 `has_params`，可训练门用 `trainable=True`
 
 ---
 

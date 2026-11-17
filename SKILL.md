@@ -1,10 +1,10 @@
 ---
 name: pyvqnet-skills
-description: PyVQNet/VQNet2.18.1 API 文档助手 - 量子机器学习编程专家。当用户需要"用 VQNet 2.18.1 写量子 ML 代码、实现 VQC、混合量子经典模型、GPU 训练、分布式训练"等任务时，自动调用此 Skill。触发关键词: VQNet, pyvqnet, QTensor, QuantumLayer, 量子神经网络, 变分量子线路, 量子机器学习, QVC, VSQL, Quanvolution。
+description: PyVQNet/VQNet2.18.2 API 文档助手 - 量子机器学习编程专家。当用户需要"用 VQNet 2.18.2 写量子 ML 代码、实现 VQC、混合量子经典模型、GPU 训练、分布式训练"等任务时，自动调用此 Skill。触发关键词: VQNet, pyvqnet, QTensor, QuantumLayer, 量子神经网络, 变分量子线路, 量子机器学习, QVC, VSQL, Quanvolution。
 license: Apache License 2.0
 ---
 
-# VQNet 2.18.1 分层 Skill 体系
+# VQNet 2.18.2 分层 Skill 体系
 
 **重要规则**: 本 Skill 所有示例代码均来自官方文档。AI 必须先读取对应的 `references/*.md` 文件获取准确示例，**禁止凭记忆编造 VQNet 代码**。
 
@@ -212,6 +212,7 @@ for i, q in enumerate(qubits[:2]):
 - `QpandaQProgVQCLayer(origin_qprog_func, para_num, qvm_type="cpu")`
 - `QuantumBatchAsyncQcloudLayer(...)` - 真机运行
 - `QuantumLayerAdjoint(...)` - adjoint 梯度方法
+- `QiskitLayer(qiskit_circuits, para_num)` / `CirqLayer(cirq_vqc, para_num)` - Qiskit / Cirq 电路封装层 (`pyvqnet.qnn.utils`，官方 qnn_pq3 文档)
 - `VQCLayer(vqc_module, ...)` - 统一量子层（四后端 + 影子测量 + 噪声模型）[2.18.2]
 - `TorchVQCLayer(vqc_module, ...)` - torch 后端统一量子层 [2.18.2]
 
@@ -256,13 +257,14 @@ print(layer.m_para.grad)
 
 ### 7. VQC 自动微分 Skill (vqc_native_autodiff)
 
-**能力**: 使用 VQNet 内置的 VQC 模块，不依赖 pyqpanda，自动微分模拟。
+**能力**: 使用 VQNet 内置的 VQC 模块，不依赖 pyqpanda3 等外部量子线路库，自动微分模拟。
 
 **关键 API**:
 - `pyvqnet.qnn.vqc.QMachine(num_wires)` - 模拟器
 - `pyvqnet.qnn.vqc.Hadamard`, `RX`, `RY`, `RZ`, `CNOT`
 - `pyvqnet.qnn.vqc.Probability(wires)` - 概率测量
 - `VQC_HardwareEfficientAnsatz` - 硬件高效 ansatz
+- `pyvqnet.qnn.SPSA` - SPSA 优化器（官方 qnn_pq3 文档）；`pyvqnet.qnn.vqc.QNSPSAOptimizer` - 量子自然 SPSA 优化器（`references/vqc.md`）
 
 **关键**: 必须在 forward 开头调用 `device.reset_states(batchsize)`
 
@@ -523,15 +525,16 @@ class QVCModel(Module):
 
 ### 14. 分布式训练 Skill (distributed)
 
-**能力**: MPI 多进程训练、NCCL GPU 通信、多节点部署。
+**能力**: gloo (CPU) / NCCL (GPU) 多进程训练、多节点、数据/张量/流水线/混合并行。
 
 **关键 API**:
-- `pyvqnet.distributed.CommController("mpi")` / `CommController("nccl")` - 通信控制器
-- `vqnetrun -np N python train.py`
+- `pyvqnet.distributed.CommController("gloo")` / `CommController("nccl")` - 通信控制器（默认按设备自动选择）
+- `vqnetrun --nproc_per_node N python train.py` - 分布式启动器（`--nproc_per_node` 必填）
+- `pyvqnet.distributed.hybrid.ParallelTrainingWrapper(args, pipeline_def, trainset, strategy=None)` - 混合并行训练封装
 
 **参考文件**: `references/distributed.md`
 
-**要求**: 仅支持 Linux；CPU 分布式需 mpich-mpicxx 4.1.2 + mpi4py；GPU 需 NCCL（随包附带）
+**要求**: 仅支持 Linux；CPU 分布式使用 gloo（内置，无需安装 MPI）；GPU 分布式使用 NCCL（随包附带）
 
 ---
 
@@ -632,6 +635,9 @@ print(pyvqnet.backends.get_backend())  # "torch"
 8. **AmplitudeEmbedding 未归一化**: 输入特征必须手动调用 `x / np.linalg.norm(x)` 归一化, L2 norm 必须为 1
 9. **HardwareEfficientAnsatz 参数遗漏**: pyqpanda3 版本必须使用 `get_para_num()` + `create_ansatz(params)` 组合, 不能调用无参方法
 10. **损失函数参数顺序**: VQNet 损失函数 `loss_fn(label, pred)` — 标签在前，预测值在后（与 PyTorch 相反）
+11. **已移除的 `has_params`**: 2.18.2 移除了 VQC 门类的 `has_params` 参数，可训练门使用 `trainable=True`（第一位置参数），如 `RX(trainable=True, wires=0)`
+12. **VQCLayer 测量与 IR**: `VQCLayer`/`VQCQCloudLayer` 的 `QMachine` 必须设置 `save_ir=True`；`VQCLayer` 的 `pauli_str_dict`（期望值）与 `measure_qubits`（概率）互斥，`VQCQCloudLayer` 仅支持 `pauli_str_dict` 且不能使用 `MeasureAll`
+13. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
 
 ### GPU 训练要点
 
@@ -648,16 +654,18 @@ print(pyvqnet.backends.get_backend())  # "torch"
 | QTensor API | `references/qtensor.md` |
 | 经典神经网络 | `references/classic_nn.md` |
 | 神经网络工具 | `references/utils.md` |
-| QuantumLayer | `references/quantum_layers.md` |
+| QuantumLayer / VQCLayer / TorchVQCLayer | `references/quantum_layers.md` |
 | VQC 自动微分 | `references/vqc.md` |
 | 量子测量与熵 | `references/measurement.md` |
 | QNN 架构总览 | `references/qnn.md` |
 | 电路模板与拟设 | `references/quantum_templates.md` |
 | QML Demo | `references/qml_demos.md` |
-| 分布式训练 | `references/distributed.md` |
+| 分布式训练 (gloo/NCCL, ParallelTrainingWrapper) | `references/distributed.md` |
 | 量子大模型 | `references/quantum_llm.md` |
 | 大模型算子与 TRL 微调损失 | `references/llm_ops.md` |
 | PyTorch 后端 / torch 量子线路（sv.torch、tn.torch） | `references/torch_api.md` |
+
+> `QiskitLayer`/`CirqLayer` 由 `pyvqnet.qnn.utils` 提供（详见官方 pyqpanda3 QNN 文档）；`SPSA` 由 `pyvqnet.qnn` 提供（实现模块 `pyvqnet.qnn.opt`）。
 
 ---
 
@@ -671,5 +679,5 @@ print(pyvqnet.backends.get_backend())  # "torch"
 
 ---
 
-**Version**: 2.18.1
-**Compatibility**: VQNet 2.18.1+ with pyqpanda3
+**Version**: 2.18.2
+**Compatibility**: VQNet 2.18.2+ with pyqpanda3

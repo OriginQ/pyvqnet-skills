@@ -41,8 +41,8 @@ cnot(q_machine=device, wires=[0, 1])
 cnot(q_machine=device, wires=[2, 3])
 
 # Trainable gates (parameters are torch.nn.Parameter under the hood)
-rx_layer = RX(has_params=True, trainable=True, wires=0)
-rz_layer = RZ(has_params=True, trainable=True, wires=1)
+rx_layer = RX(trainable=True, wires=0)
+rz_layer = RZ(trainable=True, wires=1)
 rx_layer(q_machine=device)
 rz_layer(q_machine=device)
 

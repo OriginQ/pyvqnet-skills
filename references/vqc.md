@@ -1,6 +1,6 @@
 # VQC 自动微分 API Reference
 
-> **重要**: 所有示例代码均来自官方文档。VQC 模块不依赖 pyqpanda，使用 VQNet 内置的自动微分模拟。
+> **重要**: 所有示例代码均来自官方文档。VQC 模块不依赖 pyqpanda3 等外部量子线路库，使用 VQNet 内置的自动微分模拟。
 
 ---
 
@@ -77,6 +77,53 @@ swap(q_machine=qm, wires=[0, 1])
 
 ## 量子门类（Module 形式）
 
+### 统一签名（2.18.2）
+
+> **2.18.2 变更**: 所有量子门类统一为以下签名，`trainable` 作为第一个位置参数。通用形式为 `X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)`。
+
+```python
+I(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+Hadamard(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+T(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+S(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+PauliX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+PauliY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+PauliZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+X1(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CRX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CRY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CRZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+U1(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+U2(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+U3(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CNOT(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CR(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+SWAP(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CSWAP(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+CZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RXX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RYY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RZZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+RZX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+Toffoli(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+IsingXX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+IsingYY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+IsingZZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+IsingXY(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+PhaseShift(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+MultiRZ(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+SDG(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+TDG(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+ControlledPhaseShift(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+MultiControlledX(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False, control_values=None)
+```
+
+`trainable=True` 表示该门自带可训练参数；使用外部输入数据编码时设置为 `False` 并通过 `params=` 传入。
+
 ### Hadamard
 
 ```python
@@ -94,11 +141,11 @@ print(device.states)
 ```python
 from pyvqnet.qnn.vqc import RX, RY, RZ, QMachine
 
-# 参数化旋转门 - 设置 has_params=True, trainable=True
+# 参数化旋转门 - 设置 trainable=True
 device = QMachine(4)
 
 # 可训练的 RX 门
-layer = RX(has_params=True, trainable=True, wires=0)
+layer = RX(trainable=True, wires=0)
 device.reset_states(2)
 layer(q_machine=device)
 
@@ -136,6 +183,10 @@ layer(q_machine=device)
 ### Probability
 
 ```python
+Probability(wires, name="")
+```
+
+```python
 from pyvqnet.qnn.vqc import Probability, QMachine
 
 # 概率测量
@@ -153,6 +204,18 @@ print(prob)
 ### VQC_HardwareEfficientAnsatz
 
 ```python
+VQC_HardwareEfficientAnsatz(
+    n_qubits,
+    single_rot_gate_list,
+    entangle_gate="CNOT",
+    entangle_rules="linear",
+    depth=1,
+    initial=None,
+    dtype=None
+)
+```
+
+```python
 from pyvqnet.qnn.vqc import VQC_HardwareEfficientAnsatz
 
 ansatz = VQC_HardwareEfficientAnsatz(
@@ -163,6 +226,153 @@ ansatz = VQC_HardwareEfficientAnsatz(
     depth=2
 )
 ansatz(q_machine=device)
+```
+
+### VQC_BasicEntanglerTemplate
+
+```python
+VQC_BasicEntanglerTemplate(num_layers=1, num_qubits=1, rotation="RX", initial=None, dtype=None)
+```
+
+由每个量子位上的单参数单量子位旋转层，后跟一个闭合链或环组合的多个 CNOT 门构成。CNOT 门环将每个量子位与其邻居连接起来，最后一个量子位被认为是第一个量子位的邻居。
+
+**参数**:
+- `num_layers` - 量子比特线路层数
+- `num_qubits` - 量子比特数，默认为 1
+- `rotation` - 单参数单量子比特门，默认 `"RX"`
+- `initial` - 初始化所有参数逻辑门的参数，默认 None（随机初始化）
+- `dtype` - 参数数据类型，默认 None（使用 float32）
+
+**示例**:
+```python
+from pyvqnet.nn import Module
+from pyvqnet.qnn.vqc import VQC_BasicEntanglerTemplate
+from pyvqnet.qnn.vqc import Probability, QMachine
+from pyvqnet import tensor
+
+
+class QM(Module):
+    def __init__(self, name=""):
+        super().__init__(name)
+        self.ansatz = VQC_BasicEntanglerTemplate(
+            2,
+            4,
+            "rz",
+            initial=tensor.ones([1, 1])
+        )
+        self.measure = Probability(wires=[0, 2])
+        self.device = QMachine(4)
+
+    def forward(self, x, *args, **kwargs):
+        self.ansatz(q_machine=self.device)
+        return self.measure(q_machine=self.device)
+
+bz = 1
+inputx = tensor.arange(1.0, bz * 4 + 1).reshape([bz, 4])
+qlayer = QM()
+y = qlayer(inputx)
+y.backward()
+print(y)
+# [[1.0000002 0.        0.        0.       ]]
+```
+
+### VQC_StronglyEntanglingTemplate
+
+```python
+VQC_StronglyEntanglingTemplate(num_layers=1, num_qubits=1, ranges=None, initial=None, dtype=None)
+```
+
+由单个量子比特旋转和纠缠器组成的层，参考 `circuit-centric classifier design <https://arxiv.org/abs/1804.00633>`_。
+
+**参数**:
+- `num_layers` - 重复层数，默认 1
+- `num_qubits` - 量子比特数，默认 1
+- `ranges` - 决定每个后续层的范围超参数的序列。默认 None，对第 l 层和 M 个量子比特使用 r = l mod M。
+- `initial` - 初始化所有参数逻辑门的参数，默认 None（随机初始化）
+- `dtype` - 参数数据类型，默认 None（使用 float32）
+
+**示例**:
+```python
+from pyvqnet.nn import Module
+from pyvqnet.qnn.vqc import VQC_StronglyEntanglingTemplate
+from pyvqnet.qnn.vqc import Probability, QMachine
+from pyvqnet import tensor
+
+
+class QM(Module):
+    def __init__(self, name=""):
+        super().__init__(name)
+        self.ansatz = VQC_StronglyEntanglingTemplate(
+            2,
+            4,
+            None,
+            initial=tensor.ones([1, 1])
+        )
+        self.measure = Probability(wires=[0, 1])
+        self.device = QMachine(4)
+
+    def forward(self, x, *args, **kwargs):
+        self.ansatz(q_machine=self.device)
+        return self.measure(q_machine=self.device)
+
+bz = 1
+inputx = tensor.arange(1.0, bz * 4 + 1).reshape([bz, 4])
+qlayer = QM()
+y = qlayer(inputx)
+y.backward()
+print(y)
+# [[0.3745951 0.154298  0.059156  0.4119509]]
+```
+
+### VQC_AmplitudeEmbedding
+
+```python
+VQC_AmplitudeEmbedding(input_feature, q_machine)
+```
+
+将 2^n 个特征编码为 `q_machine` n 量子比特的振幅向量。
+
+**参数**:
+- `input_feature` - 表示参数的 numpy 数组或 QTensor
+- `q_machine` - 量子虚拟机设备
+
+**示例**:
+```python
+from pyvqnet.qnn.vqc import VQC_AmplitudeEmbedding, QMachine
+from pyvqnet.tensor import QTensor
+
+qm = QMachine(3)
+VQC_AmplitudeEmbedding(QTensor([3.2, -2, -2, 0.3, 12, 0.1, 2, -1]), q_machine=qm)
+print(qm.states)
+```
+
+### VQC_CRotCircuit
+
+```python
+VQC_CRotCircuit(para, control_wire, rot_wire, q_machine)
+```
+
+在 `q_machine` 的 `rot_wire` 以及受控比特 `control_wire` 上使用 `para` 进行受控 Rot 操作符。
+
+**参数**:
+- `para` - 表示参数 `[φ, θ, ω]` 的数组
+- `control_wire` - 控制量子比特索引
+- `rot_wire` - Rot 量子比特索引
+- `q_machine` - 量子虚拟机设备
+
+**示例**:
+```python
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.vqc import VQC_CRotCircuit
+from pyvqnet.qnn.vqc import QMachine, MeasureAll
+
+p = QTensor([2, 3, 4.0])
+qm = QMachine(2)
+VQC_CRotCircuit(p, 0, 1, qm)
+m = MeasureAll(obs={"Z0": 1})
+exp = m(q_machine=qm)
+print(exp)
+# [[0.9999999]]
 ```
 
 ---
@@ -230,8 +440,8 @@ class QM(Module):
         )
         self.encode1 = RZ(wires=0)
         self.encode2 = RZ(wires=1)
-        # 设置 has_params=True, trainable=True 来添加可训练参数
-        self.vqc = RZ(has_params=True, trainable=True, wires=1)
+        # 设置 trainable=True 来添加可训练参数
+        self.vqc = RZ(trainable=True, wires=1)
         self.measure = Probability(wires=[0, 2])
         self.device = QMachine(4)
 
@@ -262,7 +472,7 @@ class QM(Module):
 
 1. **reset_states**: 每次 forward 必须调用 `device.reset_states(batchsize)`
 2. **参数形状**: 编码参数必须是 `[batchsize, 1]`
-3. **trainable**: 设置 `has_params=True, trainable=True` 添加可训练参数
+3. **trainable**: 设置 `trainable=True` 添加可训练参数
 4. **dtype**: 参数精度为 `kfloat32`，门内部为 `kcomplex64`
 
 ---
@@ -287,32 +497,35 @@ class QM(Module):
 
 ---
 
-## QuantumAdjointLayer (adjoint gradient)
+## QuantumLayerAdjoint (adjoint gradient)
 
 ```python
-from pyvqnet.qnn.vqc import QuantumAdjointLayer, QuantumLayerAdjoint
+QuantumLayerAdjoint(vqc_module: pyvqnet.nn.Module, name="")
+```
 
-adjoint_model = QuantumAdjointLayer(vqc_module, use_qpanda=False, name="")
-# QuantumAdjointLayer and QuantumLayerAdjoint are the same class
+```python
+from pyvqnet.qnn.vqc import QuantumLayerAdjoint
+
+adjoint_model = QuantumLayerAdjoint(vqc_module, name="")
 ```
 
 记忆高效的梯度计算方法，基于伴随矩阵方法（adjoint method）。参考论文: `Efficient calculation of gradients in classical simulations of variational quantum algorithms <https://arxiv.org/abs/2009.02823>`_。
 
 **参数**:
-- `vqc_module` - VQC Module 实例（其 QMachine 必须设置 `grad_mode="adjoint"`）
-- `use_qpanda` - 是否使用 pyqpanda 进行前向加速（默认 False）。复杂电路下 qpanda 有速度优势
-- `name` - 模块名称
+- `vqc_module` - 一个仅使用 `pyvqnet.qnn.vqc` 下量子线路接口搭建的 `pyvqnet.nn.Module` 实例
+- `name` - 模块名称，默认 `""`
 
 **注意**:
 1. 仅支持单参数量子门的 VQC 模块
-2. QMachine 必须设置 `grad_mode="adjoint"`
+2. QMachine 必须使用伴随梯度模式：`grad_method="adjoint"`（构造参数为 `grad_mode="adjoint"`）
 3. 支持输入数据梯度和可训练参数梯度
+4. `QuantumAdjointLayer` 是 `QuantumLayerAdjoint` 的兼容别名
 
 **示例**:
 ```python
 from pyvqnet import tensor
 from pyvqnet.qnn.vqc import (
-    QuantumAdjointLayer, QMachine,
+    QuantumLayerAdjoint, QMachine,
     RX, RY, RZ, CNOT, T,
     VQC_HardwareEfficientAnsatz, MeasureAll
 )
@@ -323,10 +536,10 @@ class QModel(pyvqnet.nn.Module):
         super(QModel, self).__init__()
         self._num_wires = num_wires
         self.qm = QMachine(num_wires, dtype=dtype, grad_mode=grad_mode)
-        self.rx_layer = RX(has_params=True, trainable=False, wires=0)
-        self.ry_layer = RY(has_params=True, trainable=False, wires=1)
-        self.rz_layer = RZ(has_params=True, trainable=False, wires=1)
-        self.rz_layer2 = RZ(has_params=True, trainable=True, wires=1)
+        self.rx_layer = RX(trainable=False, wires=0)
+        self.ry_layer = RY(trainable=False, wires=1)
+        self.rz_layer = RZ(trainable=False, wires=1)
+        self.rz_layer2 = RZ(trainable=True, wires=1)
         self.rot = VQC_HardwareEfficientAnsatz(
             6, ["rx", "RY", "rz"],
             entangle_gate="cnot", entangle_rules="linear", depth=5
@@ -355,7 +568,7 @@ qunatum_model = QModel(
     dtype=pyvqnet.kcomplex64,
     grad_mode="adjoint"
 )
-adjoint_model = QuantumAdjointLayer(qunatum_model)
+adjoint_model = QuantumLayerAdjoint(qunatum_model, name="")
 batch_y = adjoint_model(input_x)
 batch_y.backward()
 ```
@@ -401,8 +614,8 @@ from pyvqnet.qnn.vqc import CircuitGraph, QMachine, RX, RY, CNOT, MeasureAll
 
 qm = QMachine(3)
 qm.reset_states(1)
-rx = RX(has_params=True, trainable=False, wires=0)
-ry = RY(has_params=True, trainable=True, wires=1)
+rx = RX(trainable=False, wires=0)
+ry = RY(trainable=True, wires=1)
 cnot = CNOT(wires=[0, 1])
 measure = MeasureAll(obs={"Z0": 1, "Z1": 1})
 
@@ -463,6 +676,10 @@ z1 = qf(qm, A, 0.001)
 ```
 
 ### VQC_LCU
+
+```python
+VQC_LCU(wires=None, check_hermitian=True)
+```
 
 ```python
 from pyvqnet.qnn.vqc import VQC_LCU
@@ -592,10 +809,10 @@ class QModel(pyvqnet.nn.Module):
         self._num_wires = num_wires
         self._dtype = dtype
         self.qm = QMachine(num_wires, dtype=dtype)
-        self.rz_layer1 = RZ(has_params=True, trainable=False, wires=0)
-        self.rz_layer2 = RZ(has_params=True, trainable=False, wires=1)
-        self.l_train1 = RY(has_params=True, trainable=True, wires=1)
-        self.l_train2 = RX(has_params=True, trainable=True, wires=2)
+        self.rz_layer1 = RZ(trainable=False, wires=0)
+        self.rz_layer2 = RZ(trainable=False, wires=1)
+        self.l_train1 = RY(trainable=True, wires=1)
+        self.l_train2 = RX(trainable=True, wires=2)
         self.xlayer = PauliX(wires=0)
         self.cnot01 = CNOT(wires=[0, 1])
         self.cnot12 = CNOT(wires=[1, 2])
@@ -855,16 +1072,30 @@ VQNet 2.18 提供了张量网络（TN）后端作为状态向量（state-vector�
 | MPS 支持 | 否 | 是（近似模拟） |
 | 后端设置 | `pyvqnet`（默认） | `pyvqnet.backends.set_backend("pyvqnet")` |
 
-### TNQMachine / TNQModule
+### TNQModule
 
 ```python
-import pyvqnet
-pyvqnet.backends.set_backend("pyvqnet")
-from pyvqnet.qnn.vqc.tn.native import TNQModule, TNQMachine
-# 或使用 Torch 版本:
-# from pyvqnet.qnn.vqc.tn.torch import TNQModule, TNQMachine
+TNQModule(use_jit=True, vectorized_argnums: Union[int, Sequence[int]]=0, name="", mesh=None, cotengra_options=None, tree_path=None)
+```
 
-machine = TNQMachine(num_wires, dtype=pyvqnet.kcomplex64, use_mps=False)
+在 `pyvqnet` 后端（默认后端）下，定义张量网络量子变分线路模型时应继承的基类。
+
+> **警告**: `TNQModule` 仅支持量子类型的子模块（`TNQMachine`、量子门、ansatz 模板、测量模块与编码模块）。经典神经网络层（例如 `Linear`）不可作为 `TNQModule` 的子模块：JIT 编译的对象是纯量子线路，其中的经典计算将被忽略，或在编译时被固定为常量。构建经典-量子混合模型时，应将经典层定义在外层普通 `pyvqnet.nn.Module` 中，并将 `TNQModule` 作为其子模块；如需不经 JIT 编译执行，可直接使用 `TNQMachine`。
+
+**参数**:
+- `use_jit` - 是否开启即时编译，默认 True（native 与 torch TN 后端均默认为 True）
+- `vectorized_argnums` - 要被向量化的参数，这些参数应该在同一维共享相同的批次形状，默认 0
+- `name` - 模块名
+- `mesh` - 用于分布式收缩的 `jax.sharding.Mesh`。为 None 时使用单设备 JIT；指定 mesh 时通过 SPMD 实现模型并行
+- `cotengra_options` - 可选的字典，在指定 `mesh` 时传递给 `cotengra.ReusableHyperOptimizer`
+- `tree_path` - 可选的预计算收缩路径文件（`.pkl`），指定后将跳过运行时的 cotengra 搜索
+
+**注意**: 该类及其派生类仅适用于 `pyvqnet.backends.set_backend("pyvqnet")`。
+
+### TNQMachine
+
+```python
+TNQMachine(num_wires, dtype=pyvqnet.kcomplex64, use_mps=False)
 ```
 
 **参数**:
@@ -875,35 +1106,75 @@ machine = TNQMachine(num_wires, dtype=pyvqnet.kcomplex64, use_mps=False)
 **示例**:
 ```python
 import pyvqnet
-from pyvqnet.nn import Parameter
 pyvqnet.backends.set_backend("pyvqnet")
 from pyvqnet.qnn.vqc.tn.native import (
     TNQModule, TNQMachine,
     RX, RY, CNOT, PauliX, PauliZ,
     qmeasure, qcircuit, VQC_RotCircuit,
 )
+from pyvqnet.tensor import QTensor
+# 或使用 Torch 版本:
+# from pyvqnet.qnn.vqc.tn.torch import TNQModule, TNQMachine
 
 class QModel(TNQModule):
-    def __init__(self):
+    def __init__(self, batch_size=2):
         super().__init__()
         self.qm = TNQMachine(4)
-        self.rx = RX(has_params=True, trainable=True, wires=0)
-        self.ry = RY(has_params=True, trainable=True, wires=1)
+        self.rx = RX(trainable=True, wires=0)
+        self.ry = RY(trainable=True, wires=1)
         self.cnot = CNOT(wires=[0, 1])
+        self.batch_size = batch_size
 
     def forward(self, x):
-        self.qm.reset_states(x.shape[0])
-        self.rx(params=x[:, [0]], q_machine=self.qm)
-        self.ry(params=x[:, [1]], q_machine=self.qm)
+        # 基于 vmap，forward 内 x 已降一维，批次大小需显式指定
+        self.qm.reset_states(self.batch_size)
+        qcircuit.rx(q_machine=self.qm, wires=0, params=x[0])
+        qcircuit.ry(q_machine=self.qm, wires=1, params=x[1])
+        self.rx(q_machine=self.qm)
+        self.ry(q_machine=self.qm)
         self.cnot(q_machine=self.qm)
         return qmeasure.Probability(wires=[0])(q_machine=self.qm)
+
+x = QTensor([[0.1, 0.2, 0.3, 0.4], [0.2, 0.3, 0.4, 0.5]])
+y = QModel(batch_size=2)(x)
+y.backward(pyvqnet.tensor.ones_like(y))
+print(y)
 ```
+
+### TN native 量子门
+
+`pyvqnet.qnn.vqc.tn.native` 与 `pyvqnet.qnn.vqc.tn.torch` 中的量子门类统一签名为：
+
+```python
+X(trainable=False, init_params=None, wires=None, dtype=pyvqnet.kcomplex64, use_dagger=False)
+```
+
+支持 `I` / `Hadamard` / `T` / `S` / `PauliX` / `PauliY` / `PauliZ` / `RX` / `RY` / `RZ` / `CRX` / `CRY` / `CRZ` / `U1` / `U2` / `U3` / `CNOT` / `CY` / `CZ` / `CR` / `SWAP` / `CSWAP` / `RXX` / `RYY` / `RZZ` / `RZX` / `Toffoli` / `IsingXX` / `IsingYY` / `IsingZZ` / `IsingXY` / `PhaseShift` / `MultiRZ` / `SDG` / `TDG` / `ControlledPhaseShift`。
+
+### TN native 测量接口
+
+```python
+VQC_Purity(qubits_idx, num_wires, qmachine)
+VQC_DensityMatrixFromQstate(indices, num_wires, qmachine)
+Probability(wires, name="")
+MeasureAll(obs, name="")
+HermitianExpval(obs, name="")
+Samples(wires=None, obs=None, shots=1, name="")
+```
+
+- `VQC_Purity` 的 `qmachine` 为 `TNQMachine` 或 `TNQModule` 实例
+- `Probability` 的 `wires` 以及 `MeasureAll` / `HermitianExpval` 的 `obs` 均为必填参数
+- TN native 中不提供 `VQC_VarMeasure`；方差测量使用主模块的 `VQC_VarMeasure(q_machine, obs)`
 
 ---
 
 ## 新增测量类型
 
 ### MeasureAll
+
+```python
+MeasureAll(obs, name="")
+```
 
 ```python
 from pyvqnet.qnn.vqc import MeasureAll
@@ -916,19 +1187,24 @@ measure = MeasureAll(obs={"Z0 Z1": 1, "X0": 0.5})
 **示例**:
 ```python
 from pyvqnet.qnn.vqc import MeasureAll, QMachine, RX, RY
+from pyvqnet.tensor import QTensor
 
 qm = QMachine(2)
 qm.reset_states(1)
-rx = RX(has_params=True, trainable=False, wires=0)
-ry = RY(has_params=True, trainable=False, wires=1)
-rx(params=[0.5], q_machine=qm)
-ry(params=[0.3], q_machine=qm)
+rx = RX(trainable=False, wires=0)
+ry = RY(trainable=False, wires=1)
+rx(params=QTensor([0.5]), q_machine=qm)
+ry(params=QTensor([0.3]), q_machine=qm)
 # 测量 Z0⊗Z1 的期望值
 measure = MeasureAll(obs={"Z0 Z1": 1})
 result = measure(q_machine=qm)
 ```
 
 ### Samples
+
+```python
+Samples(wires=None, obs=None, shots=1, name="")
+```
 
 ```python
 from pyvqnet.qnn.vqc import Samples
@@ -938,6 +1214,153 @@ y = sampler(q_machine=qm)
 ```
 
 基于电路输出概率进行采样。若不指定 wires，则对所有量子比特采样。
+
+### HermitianExpval
+
+```python
+HermitianExpval(obs, name="")
+```
+
+计算量子线路某个厄密特量的期望。`obs` 为必填参数，格式示例：`{'wires': (1, 0), 'observables': tensor.to_tensor(H)}`。
+
+### VQC_VarMeasure
+
+```python
+VQC_VarMeasure(q_machine, obs)
+```
+
+提供的可观察量 `obs` 的方差。当前支持 `Hadamard`、`I`、`PauliX`、`PauliY`、`PauliZ` 几种 Observable。测量结果一般为 `[b, 1]`。
+
+### VQC_Purity（状态向量后端）
+
+```python
+VQC_Purity(state, qubits_idx, num_wires)
+```
+
+从态矢中计算特定量子比特 `qubits_idx` 上的纯度 γ = Tr(ρ²)。注意张量网络后端的签名不同：`pyvqnet.qnn.vqc.tn.native.VQC_Purity(qubits_idx, num_wires, qmachine)`。
+
+### VQC_DensityMatrixFromQstate（状态向量后端）
+
+```python
+VQC_DensityMatrixFromQstate(state, indices)
+```
+
+计算量子态在一组特定量子比特上的密度矩阵，返回大小 `(b, 2^len(indices), 2^len(indices))` 的密度矩阵。
+
+---
+
+## 量子机器学习模型接口
+
+### Quanvolution
+
+```python
+Quanvolution(params_shape, strides=(1, 1), kernel_initializer=quantum_uniform, machine_type="cpu")
+```
+
+基于《Quanvolutional Neural Networks: Powering Image Recognition with Quantum Circuits》实现的量子卷积，用变分量子电路替换经典卷积滤波器。
+
+**参数**:
+- `params_shape` - 参数的形状，应为二维
+- `strides` - 切片窗口的步长，默认 `(1, 1)`
+- `kernel_initializer` - 参数的卷积核初始化器
+- `machine_type` - 机器类型字符串，默认 `"cpu"`
+
+**示例**:
+```python
+from pyvqnet.qnn.qcnn import Quanvolution
+import pyvqnet.tensor as tensor
+
+qlayer = Quanvolution([4, 2], (3, 3))
+x = tensor.arange(1, 25 * 25 * 3 + 1).reshape([3, 1, 25, 25])
+y = qlayer(x)
+print(y.shape)  # [3, 4, 8, 8]
+y.backward()
+```
+
+### QGRU
+
+```python
+QGRU(para_num, num_of_qubits=4, input_size=100, hidden_size=100, batch_first=True)
+```
+
+基于变分量子线路实现的 GRU（门控循环单元），通过量子电路进行状态更新和记忆保持。
+
+**参数**:
+- `para_num` - 量子电路中的参数数量
+- `num_of_qubits` - 量子比特的数量
+- `input_size` - 输入数据的特征维度
+- `hidden_size` - 隐藏单元的维度
+- `batch_first` - 输入的第一维是否为批次数量
+
+**示例**:
+```python
+import numpy as np
+from pyvqnet.tensor import tensor
+from pyvqnet.qnn.qgru import QGRU
+from pyvqnet.dtype import kfloat32
+
+para_num = 8
+qgru = QGRU(para_num, 8, 4, 4, batch_first=True)
+x = tensor.QTensor(np.random.randn(1, 1, 4), dtype=kfloat32)
+output, h_t = qgru(x)
+output.backward()
+print("Output shape:", output.shape)
+print("h_t shape:", h_t.shape)
+```
+
+### QLSTM
+
+```python
+QLSTM(para_num, num_of_qubits=4, input_size=100, hidden_size=100, batch_first=True)
+```
+
+结合量子计算与经典 LSTM 的混合模型，利用量子计算的并行性和经典 LSTM 的记忆能力处理序列数据。
+
+**参数**:
+- `para_num` - 量子电路中的参数数量
+- `num_of_qubits` - 量子比特的数量
+- `input_size` - 输入数据的特征维度
+- `hidden_size` - 隐藏单元的维度
+- `batch_first` - 输入的第一维是否为批次数量
+
+**示例**:
+```python
+import numpy as np
+from pyvqnet.tensor import tensor
+from pyvqnet.qnn.qlstm import QLSTM
+from pyvqnet.dtype import kfloat32
+
+qlstm = QLSTM(4, 4, 4, 20, batch_first=True)
+x = tensor.QTensor(np.random.randn(3, 5, 4), dtype=kfloat32)
+output, (h_t, c_t) = qlstm(x)
+print("Output shape:", output.shape)
+print("h_t shape:", h_t.shape)
+print("c_t shape:", c_t.shape)
+```
+
+### QRLModel
+
+```python
+QRLModel(num_qubits, n_layers=2)
+```
+
+使用变分量子电路的量子深度强化学习模型。
+
+**参数**:
+- `num_qubits` - 量子电路中所使用的量子比特数量
+- `n_layers` - 变分量子电路中的层数
+
+**示例**:
+```python
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.qrl import QRLModel
+
+model = QRLModel(num_qubits=4, n_layers=2)
+x = QTensor([[1.1, 0.3, 1.2, 0.6], [0.2, 1.1, 0, 1.1], [1.3, 1.3, 0.3, 0.3]])
+output = model(x)
+output.backward()
+print("Model output:", output)
+```
 
 ---
 
@@ -967,4 +1390,4 @@ from pyvqnet.qnn.vqc import (
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

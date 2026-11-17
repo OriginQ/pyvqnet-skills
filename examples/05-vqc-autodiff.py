@@ -1,7 +1,7 @@
 """
 VQC 自动微分模块示例
 ====================
-展示 VQNet 内置的 VQC 模块（不依赖 pyqpanda）进行量子电路模拟和自动微分。
+展示 VQNet 内置的 VQC 模块（不依赖 pyqpanda3 等外部量子线路库）进行量子电路模拟和自动微分。
 
 关键点：
 - 必须在 forward 开头调用 device.reset_states(batchsize)
@@ -27,9 +27,9 @@ class QModel(Module):
         self.encode_z = RZ(wires=0)
         self.encode_x = RX(wires=1)
 
-        # 可训练的量子门（设置 has_params=True, trainable=True）
-        self.trainable_rx = RX(has_params=True, trainable=True, wires=0)
-        self.trainable_rz = RZ(has_params=True, trainable=True, wires=1)
+        # 可训练的量子门（2.18.2 起 trainable 为第一个位置参数）
+        self.trainable_rx = RX(trainable=True, wires=0)
+        self.trainable_rz = RZ(trainable=True, wires=1)
 
         # Ansatz 模板
         self.ansatz = VQC_HardwareEfficientAnsatz(
@@ -117,8 +117,8 @@ def main():
     print("关键要点总结：")
     print("1. 必须在 forward 开头调用 device.reset_states(batchsize)")
     print("2. 编码参数形状必须是 [batchsize, 1]")
-    print("3. 可训练量子门设置 has_params=True, trainable=True")
-    print("4. VQC 模块不依赖 pyqpanda，使用 VQNet 内置模拟")
+    print("3. 可训练量子门设置 trainable=True")
+    print("4. VQC 模块不依赖 pyqpanda3 等外部量子线路库，使用 VQNet 内置模拟")
 
 
 if __name__ == "__main__":

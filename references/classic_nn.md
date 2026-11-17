@@ -7,15 +7,19 @@
 ## Module 基类
 
 ```python
-pyvqnet.nn.module.Module(name="")
+pyvqnet.nn.module.Module(name="", *args, **kwargs)
 ```
 
 所有神经网络模块的基类。
+
+**参数**:
+- `name` - 模块名，默认 `""`
 
 **关键方法**:
 - `forward(x, *args, **kwargs)` - 前向传播，必须被子类实现
 - `parameters()` - 返回所有可训练参数
 - `named_parameters()` - 返回参数名和参数
+- `state_dict(destination=None, prefix="", keep_vars=False)` - 返回包含模块整个状态的字典（参数和缓存值）；`keep_vars=False` 时返回的张量从自动微分中分离，`True` 时不分离
 - `toGPU(device=DEV_GPU_0)` - 移动模型到 GPU
 - `train()` / `eval()` - 设置训练/评估模式
 
@@ -43,7 +47,7 @@ print(model.parameters())
 
 ---
 
-## ModuleList / Sequential
+## ModuleList / ParameterList / Sequential
 
 ### ModuleList
 
@@ -52,6 +56,9 @@ pyvqnet.nn.ModuleList(modules=None)
 ```
 
 用于存储子模块列表（支持索引访问）。
+
+**参数**:
+- `modules` - `nn.Module` 列表
 
 ```python
 from pyvqnet.nn import Module, ModuleList, Linear
@@ -65,6 +72,34 @@ class MyModel(Module):
         for layer in self.layers:
             x = layer(x)
         return x
+```
+
+### ParameterList
+
+```python
+pyvqnet.nn.ParameterList(values=None)
+```
+
+将参数保存在列表中（支持索引访问）。
+
+**参数**:
+- `values` - `nn.Parameter` 列表
+
+```python
+from pyvqnet import nn
+
+class MyModule(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.params = nn.ParameterList([nn.Parameter((10, 10)) for _ in range(10)])
+
+    def forward(self, x):
+        for i, p in enumerate(self.params):
+            x = self.params[i // 2] * x + p * x
+        return x
+
+model = MyModule()
+print(model.state_dict().keys())
 ```
 
 ### Sequential
@@ -163,7 +198,7 @@ pyvqnet.nn.Conv1D(input_channels, output_channels, kernel_size, stride=1, paddin
 ## ConvT2D 转置卷积层
 
 ```python
-pyvqnet.nn.ConvT2D(input_channels, output_channels, kernel_size, stride=(1, 1), padding="valid", use_bias=True, dilation_rate=(1, 1), group=1, kernel_initializer=None, bias_initializer=None, dtype=None, name="")
+pyvqnet.nn.ConvT2D(input_channels, output_channels, kernel_size, stride=(1, 1), padding="valid", use_bias=True, kernel_initializer=None, bias_initializer=None, dilation_rate=(1, 1), out_padding=(0, 0), group=1, dtype=None, name="")
 ```
 
 转置卷积（反卷积）层，用于上采样，输入形状 `(B, C_in, H, W)`。
@@ -173,7 +208,7 @@ pyvqnet.nn.ConvT2D(input_channels, output_channels, kernel_size, stride=(1, 1), 
 - `output_channels` - 输出通道数
 - `kernel_size` - 卷积核大小 (int 或 tuple)
 - `stride` - 步长，默认 (1, 1)
-- `padding` - `"valid"`（无填充）或 `"same"`（输出与输入同尺寸）
+- `padding` - `"valid"`（无填充）或整数元组（显式指定填充量），默认 `"valid"`；2.18.2 起不支持 `"same"`
 - `dilation_rate` - 空洞卷积参数
 - `group` - 分组卷积
 
@@ -368,7 +403,7 @@ pyvqnet.nn.AvgPool1D(kernel, stride, padding="valid", name="")
 ## Dropout
 
 ```python
-pyvqnet.nn.Dropout(dropout_rate=0.5)
+pyvqnet.nn.Dropout(dropout_rate: float = 0.5, name: str = "")
 ```
 
 随机丢弃神经元。
@@ -521,6 +556,17 @@ print(out_q.shape, out_k.shape)
 ---
 
 ## 激活函数
+
+### Activation
+
+```python
+pyvqnet.nn.activation.Activation(name: str = "")
+```
+
+激活的基类。特定的激活函数继承了这个类。
+
+**参数**:
+- `name` - 激活模块名，默认 `""`
 
 ### ReLU
 
@@ -753,6 +799,19 @@ print(result)
 ---
 
 ## 优化器
+
+### Optimizer
+
+```python
+pyvqnet.optim.optimizer.Optimizer(params, lr=0.1, defaults=None)
+```
+
+所有优化器的基类。
+
+**参数**:
+- `params` - 需要优化的模型参数
+- `lr` - 学习率，默认 0.1
+- `defaults` - 优化器的默认超参数，默认 None
 
 ### SGD
 
@@ -1211,4 +1270,4 @@ print(y)
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

@@ -20,7 +20,7 @@ pyvqnet.qnn.pq3.quantumlayer.QuantumLayer(
 **别名**: `QuantumLayerV2`, `QpandaQCircuitVQCLayerLite`
 
 **参数**:
-- `qprog_with_measure` - 量子电路函数，**签名必须为 `(input, param)`**
+- `qprog_with_measure` - 用 pyqpanda3 构建的量子线路运行和测量函数，**签名必须为 `(input, param)`**
 - `para_num` - 可训练参数个数
 - `diff_method` - 梯度方法: "parameter_shift" 或 "finite_diff"
 - `delta` - 有限差分步长
@@ -169,8 +169,8 @@ pyvqnet.qnn.pq3.quantumlayer.QuantumBatchAsyncQcloudLayer(
 
 **参数**:
 - `qcloud_token` - 从 https://qcloud.originqc.com.cn/ 获取的 API Token
-- `submit_kwargs` - 提交参数，默认: `{"chip_id": "origin_wukong", ...}`
-- `query_kwargs` - 查询参数，默认: `{"timeout": 1, "total_timeout": 60}`
+- `submit_kwargs` - 提交参数，默认: `{"if_print_qcloud_log": False, "chip_id": "WK_C180", "is_amend": True, "is_mapping": True, "is_optimization": True, "compile_level": 3, "default_task_group_size": 200, "test_qcloud_fake": False, "server_ip_address": "", "use_qwc": True}`；`test_qcloud_fake=True` 时使用本地 CPUQVM 模拟
+- `query_kwargs` - 查询参数，默认: `{"timeout": 1, "total_timeout": 60, "print_query_info": True, "sub_circuits_split_size": 1}`
 - 设置 `test_qcloud_fake: True` 使用本地模拟测试
 
 **示例**:
@@ -230,8 +230,8 @@ pyvqnet.qnn.pq3.vqc_qcloud_layer.VQCQCloudLayer(
 - `qcloud_token` - 从 https://qcloud.originqc.com.cn/ 获取的 API Token
 - `pauli_str_dict` - Pauli 算子字典，用于期望值计算，如 `{'Z0': 1, 'Z1': 1}`
 - `shots` - 测量次数，默认: 1000
-- `submit_kwargs` - 提交参数，默认: `{"test_qcloud_fake": True}`（测试模式）
-- `query_kwargs` - 查询参数
+- `submit_kwargs` - 提交参数，默认: `{}`；设置 `{"test_qcloud_fake": True}` 使用本地 CPUQVM 模拟
+- `query_kwargs` - 查询参数，默认: `{"timeout": 1, "total_timeout": 60, "print_query_info": True, "sub_circuits_split_size": 1}`
 
 **关键约束**:
 1. VQC 模块中的 `QMachine` 必须设置 `save_ir=True`
@@ -254,7 +254,7 @@ pyvqnet.qnn.pq3.vqc_qcloud_layer.VQCQCloudLayer(
 import os
 import pyvqnet
 from pyvqnet.qnn.vqc import QMachine, RX, U1, CNOT
-from pyvqnet.qnn import Module
+from pyvqnet.nn import Module
 from pyvqnet.qnn.pq3 import VQCQCloudLayer
 
 token = os.getenv("QCLOUD_TOKEN")  # 不要硬编码！
@@ -263,8 +263,8 @@ class QModel(Module):
     def __init__(self, num_wires, dtype):
         super(QModel, self).__init__()
         self.qm = QMachine(num_wires, dtype=dtype, save_ir=True)
-        self.rx_layer = RX(has_params=True, trainable=False, wires=0)
-        self.u1 = U1(has_params=True, trainable=True, wires=[1])
+        self.rx_layer = RX(trainable=False, wires=0)
+        self.u1 = U1(trainable=True, wires=[1])
         self.cnot = CNOT(wires=[0, 1])
 
     def forward(self, x, *args, **kwargs):
@@ -341,7 +341,7 @@ pyvqnet.qnn.pq3.vqclayer.VQCLayer(
 - `shadow_config != 0` 必须同时提供 `pauli_str_dict`
 - `shadow_config != 0` 不支持 `qpanda_runtime` 后端（抛 ValueError）
 - 支持后端：`vqnet_native`、`qcloud_fake`、`qcloud_service`
-- 梯度路径不变：始终使用 mode-0 精确参数移位法（E[shadow] = exact）
+- 梯度路径：`vqnet_native` 使用 VQC 模块的原生自动微分（精确的逐项梯度乘以影子常数 c_t）；提交后端使用 mode-0 电路的参数移位法（E[shadow] ≈ exact）
 
 ### 噪声模型（pyqpanda3 0.4.0）
 
@@ -580,6 +580,217 @@ print(y.detach().numpy())  # 用 .detach().numpy() 取值
 
 ---
 
+## QiskitLayer
+
+包装 qiskit 量子电路类，在 VQNet 中实现前向与反向传播。该层仅支持将电路的输入和权重作为参数。
+
+```python
+pyvqnet.qnn.utils.QiskitLayer(qiskit_circuits, para_num)
+```
+
+**参数**:
+- `qiskit_circuits` - 定义 qiskit 电路、后端与 `run` 函数的类
+- `para_num` - 可训练参数个数
+
+**示例**:
+```python
+import numpy as np
+import qiskit
+from qiskit.quantum_info import Statevector
+from qiskit.quantum_info.operators import Pauli
+from pyvqnet.nn import Module, MeanSquaredError
+from pyvqnet.optim import Adam
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.utils import QiskitLayer
+
+class QISKIT_VQC:
+    """run(**kwargs) 通过 x 读取输入、w 读取权重。"""
+    def __init__(self, n_qubits, shots):
+        self.n_qubits = n_qubits
+        self.shots = shots
+
+    def run(self, **kwargs):
+        x = kwargs["x"].astype(np.float64)
+        w = kwargs["w"].astype(np.float64)
+        qc = qiskit.QuantumCircuit(self.n_qubits)
+        for i in range(self.n_qubits):
+            qc.ry(x[i], i)
+            qc.ry(w[i], i)
+        return np.real(Statevector(qc).expectation_value(
+            Pauli("Z" + "I" * (self.n_qubits - 1))))
+
+circuit = QISKIT_VQC(2, 1000)
+
+class Model_qiskit(Module):
+    def __init__(self):
+        super(Model_qiskit, self).__init__()
+        self.qvc = QiskitLayer(circuit, 2)
+
+    def forward(self, x):
+        return self.qvc(x) * 0.5 + 0.5
+
+model = Model_qiskit()
+optimizer = Adam(model.parameters(), lr=0.01)
+x = QTensor([[0.5, 0.5], [0.3, 0.7]], requires_grad=True)
+y = model(x)
+loss = MeanSquaredError()(QTensor([[1.0], [0.0]]), y)
+loss.backward()
+optimizer._step()
+print(x.grad, model.qvc.m_para.grad)
+```
+
+> 官方示例测试环境：qiskit 2.1.1 / qiskit-aer 0.17.2。
+
+---
+
+## CirqLayer
+
+包装 cirq 量子电路类，在 VQNet 中实现前向与反向传播。该层仅支持将电路的输入和权重作为参数。
+
+```python
+pyvqnet.qnn.utils.CirqLayer(cirq_vqc, para_num)
+```
+
+**参数**:
+- `cirq_vqc` - 定义 cirq 电路、后端与 `run` 函数的类
+- `para_num` - 可训练参数个数
+
+**示例**:
+```python
+import numpy as np
+import cirq
+import sympy
+from pyvqnet.nn import Module, MeanSquaredError
+from pyvqnet.optim import Adam
+from pyvqnet.tensor import QTensor
+from pyvqnet.qnn.utils import CirqLayer
+from pyvqnet.utils.utils import get_circuit_symbols
+
+class CIRQ_VQC:
+    def __init__(self):
+        self.qubits = cirq.LineQubit.range(2)
+        theta = sympy.symbols("theta(0:2)")
+        self.theta = np.asarray(theta).reshape((2, 1))
+
+        circuit = cirq.Circuit()
+        for i, q in enumerate(self.qubits):
+            circuit.append(cirq.ry(self.theta[i][0])(q))
+        circuit.append(cirq.CNOT(self.qubits[0], self.qubits[1]))
+        self._circuit = circuit
+
+        self._backend = cirq.Simulator()
+        # 供 CirqLayer 分离参数符号与输入符号
+        self._param_symbols_list, self._input_symbols_list = \
+            get_circuit_symbols(self._circuit)
+
+    def run(self, resolver, init_state):
+        rlt = self._backend.simulate(
+            self._circuit, resolver, initial_state=init_state).final_state_vector
+        z0 = cirq.Z(self.qubits[0])
+        return z0.expectation_from_state_vector(
+            rlt, {self.qubits[0]: 0}).real
+
+circuit = CIRQ_VQC()
+
+class Model_cirq(Module):
+    def __init__(self):
+        super(Model_cirq, self).__init__()
+        self.qvc = CirqLayer(circuit, 2)
+
+    def forward(self, x):
+        return self.qvc(x) * 0.5 + 0.5
+
+model = Model_cirq()
+optimizer = Adam(model.parameters(), lr=0.01)
+x = QTensor([[1.0, 0.0, 0.0, 0.0]], requires_grad=True)
+y = model(x)
+loss = MeanSquaredError()(QTensor([[1.0]]), y)
+loss.backward()
+optimizer._step()
+print(x.grad, model.qvc.m_para.grad)
+```
+
+> 依赖要求：`cirq==1.5.0`，且 `numpy<2`。
+
+---
+
+## SPSA（同时扰动随机近似优化器）
+
+通过两次扰动参数向量评估代价函数来逼近多元可微代价函数的梯度。
+
+```python
+pyvqnet.qnn.SPSA(
+    maxiter=1000,
+    last_avg=1,
+    c0=0.2*pi,
+    c1=0.2,
+    c2=0.602,
+    c3=0.101,
+    c4=0,
+    init_para=None,
+    model=None,
+    calibrate_flag=False
+)
+```
+
+**参数**:
+- `maxiter` - 最大迭代次数，默认: 1000
+- `last_avg` - 对最后 `last_avg` 次迭代的参数取平均；为 1 时只取最后一次，默认: 1
+- `c0` - 参数更新的初始步长 a，默认: 0.2*pi
+- `c1` - 近似梯度的初始步长 c，默认: 0.2
+- `c2` - 论文中的 alpha，用于每次迭代调整 a(c0)，默认: 0.602
+- `c3` - 论文中的 gamma，用于每次迭代调整 c(c1)，默认: 0.101
+- `c4` - 同样用于控制 a 的参数，默认: 0
+- `init_para` - 初始化参数，默认: None
+- `model` - 参数模型，默认: None
+- `calibrate_flag` - 是否校准超参数 a 和 c，默认: False
+
+**`_step(input_data)`**: 执行一次优化，返回 `(train_para, theta_best)`：`train_para` 为最终参数，`theta_best` 为最后 `last_avg` 次优化后的平均参数。
+
+> **注意**: SPSA 只支持一维的输入参数。
+
+**示例**:
+```python
+import numpy as np
+import pyqpanda3.core as pq
+from pyvqnet.nn import Module
+from pyvqnet.qnn import QuantumLayerV2, SPSA
+from pyvqnet.qnn.pq3.measure import expval
+from pyvqnet.tensor import QTensor
+
+def layer_fn_spsa_pq(input, weights):
+    num_of_qubits = 1
+    m_machine = pq.CPUQVM()
+    qubits = range(num_of_qubits)
+
+    circuit = pq.QCircuit(num_of_qubits)
+    circuit << pq.RX(qubits[0], input[0])
+    weights = weights.reshape([4, 1])
+    for i in range(4):
+        circuit << pq.RY(qubits[0], weights[i][0])
+    m_prog = pq.QProg(circuit)
+    return expval(m_machine, m_prog, {'Z0': 1})
+
+class Model_spsa(Module):
+    def __init__(self):
+        super(Model_spsa, self).__init__()
+        self.qvc = QuantumLayerV2(layer_fn_spsa_pq, 4)
+
+    def forward(self, x):
+        return self.qvc(x)
+
+model = Model_spsa()
+optimizer = SPSA(maxiter=20, init_para=model.parameters(), model=model)
+data = QTensor(np.array([[0.27507603]], dtype=np.float32))
+train_para, theta_best = optimizer._step(input_data=data)
+y = model(data)
+print(y)
+```
+
+> 官方示例使用 `QuantumLayerV2`（`QuantumLayer` 的别名）。
+
+---
+
 ## QuantumLayerAdjoint
 
 使用 adjoint 方法计算梯度。
@@ -687,101 +898,6 @@ print(y)
 
 ---
 
-## NoiseQuantumLayer
-
-**噪声模拟量子层** - 在带噪声的量子虚拟机 (`pyqpanda.NoiseQVM`) 上模拟参数化量子电路，支持自定义噪声模型配置。
-
-```python
-pyvqnet.qnn.quantumlayer.NoiseQuantumLayer(
-    qprog_with_measure,
-    para_num,
-    machine_type,
-    num_of_qubits,
-    num_of_cbits=1,
-    diff_method="parameter_shift",
-    delta=0.01,
-    noise_set_config=None,
-    dtype=None,
-    name=""
-)
-```
-
-**参数**:
-- `qprog_with_measure` - 量子电路函数，**签名必须为 `(input, param, qubits, cbits, m_machine)`**
-- `para_num` - 参数数量
-- `machine_type` - 必须为 `"noise"`（目前仅支持噪声模拟）
-- `num_of_qubits` - 量子比特数
-- `num_of_cbits` - 经典比特数，默认: 1
-- `diff_method` - 梯度方法: `"parameter_shift"` 或 `"finite_diff"`，默认: `"parameter_shift"`
-- `delta` - 有限差分步长，默认: 0.01
-- `noise_set_config` - 噪声配置函数，**签名: `def noise_set_config(qvm, qubits)`**，默认: 使用 BITFLIP_KRAUS_OPERATOR (p=0.01)
-- `dtype` - 参数数据类型，默认: None
-- `name` - 模块名称
-
-**关键函数签名**:
-```python
-def qprog_with_measure(input, param, qubits, cbits, m_machine):
-    # input: 一维经典输入数据
-    # param: 一维变分参数
-    # qubits: 由 NoiseQuantumLayer 分配的量子比特
-    # cbits: 由 NoiseQuantumLayer 分配的经典比特
-    # m_machine: 由 NoiseQuantumLayer 创建的噪声模拟器 (NoiseQVM)
-    # 返回: 期望值 (float)
-```
-
-**内置默认噪声模型** (当 `noise_set_config=None` 时):
-- BITFLIP_KRAUS_OPERATOR 应用于: X, Y, Z, RX, RY, RZ, H 门 (p=0.01)
-- DAMPING_KRAUS_OPERATOR 应用于: CNOT 门 (p=0.01)
-
-**示例**:
-```python
-from pyvqnet.qnn import NoiseQuantumLayer
-from pyvqnet.tensor import QTensor
-import pyqpanda as pq
-import numpy as np
-
-# 定义电路函数 (签名包含 qubits, cbits, m_machine)
-def circuit(input, param, qubits, cbits, machine):
-    cir = pq.QCircuit()
-    cir.insert(pq.H(qubits[0]))
-    cir.insert(pq.RY(qubits[0], input[0]))
-    cir.insert(pq.RY(qubits[0], param[0]))
-    prog = pq.QProg()
-    prog.insert(cir)
-    prog << pq.measure_all(qubits, cbits)
-
-    result = machine.run_with_configuration(prog, cbits, 100)
-    counts = np.array(list(result.values()))
-    states = np.array(list(result.keys())).astype(float)
-    probabilities = counts / 100
-    expectation = np.sum(states * probabilities)
-    return expectation
-
-# 自定义噪声配置
-def my_noise_config(qvm, qubits):
-    p = 0.01
-    from pyqpanda import NoiseModel, GateType
-    qvm.set_noise_model(NoiseModel.BITFLIP_KRAUS_OPERATOR, GateType.PAULI_X_GATE, p)
-    qvm.set_noise_model(NoiseModel.BITFLIP_KRAUS_OPERATOR, GateType.HADAMARD_GATE, p)
-    qvm.set_noise_model(NoiseModel.DAMPING_KRAUS_OPERATOR, GateType.CNOT_GATE, p, [
-        [qubits[i], qubits[i + 1]] for i in range(len(qubits) - 1)
-    ])
-
-qlayer = NoiseQuantumLayer(
-    circuit, 24, "noise", 1, 1,
-    diff_method="parameter_shift",
-    delta=0.01,
-    noise_set_config=my_noise_config,
-)
-input = QTensor([[0.0, 1.0, 1.0, 1.0]])
-rlt = qlayer(input)
-grad = QTensor(np.ones(rlt.data.shape) * 1000)
-rlt.backward(grad)
-print(qlayer.m_para.grad)
-```
-
----
-
 ## 测量函数
 
 ### ProbsMeasure
@@ -810,6 +926,11 @@ expval(machine, prog, pauli_str_dict)
 振幅编码。**输入特征必须手动归一化（L2 norm = 1）**，否则不是合法量子态。`n` 个量子比特编码 `2^n` 个特征。
 
 ```python
+pyvqnet.qnn.pq3.template.AmplitudeEmbeddingCircuit(input_feat, qlist)
+```
+
+**示例**:
+```python
 from pyvqnet.qnn.pq3.template import AmplitudeEmbeddingCircuit
 import numpy as np
 import pyqpanda3.core as pq
@@ -823,8 +944,13 @@ cir = AmplitudeEmbeddingCircuit(input_feat, qlist)
 ```
 
 ### AngleEmbeddingCircuit
-角度编码。
+角度编码。`rotation` 可选 `'X'`、`'Y'`、`'Z'`，分别使用 RX / RY / RZ 旋转；特征数必须 ≤ 量子比特数。
 
+```python
+pyvqnet.qnn.pq3.template.AngleEmbeddingCircuit(input_feat, qlist, rotation='X')
+```
+
+**示例**:
 ```python
 from pyvqnet.qnn.pq3.template import AngleEmbeddingCircuit
 import numpy as np
@@ -834,20 +960,54 @@ input_feat = np.array([2.2, 1])
 C = AngleEmbeddingCircuit(input_feat, m_qlist, 'X')
 ```
 
-### RotCircuit
-任意单量子比特旋转。
+### IQPEmbeddingCircuits
+使用 IQP 线路的对角门将 `n` 个特征编码为 `n` 个量子比特；`rep` 控制基本 IQP 线路块的重复次数。
 
+```python
+pyvqnet.qnn.pq3.template.IQPEmbeddingCircuits(input_feat, qlist, rep=1)
+```
+
+**示例**:
+```python
+import numpy as np
+from pyvqnet.qnn.pq3.template import IQPEmbeddingCircuits
+
+input_feat = np.arange(1, 100)
+qlist = range(3)
+circuit = IQPEmbeddingCircuits(input_feat, qlist, rep=3)
+```
+
+### RotCircuit
+任意单量子比特旋转。`qlist` 只接受单个量子比特索引，`para` 需包含 3 个参数 `[φ, θ, ω]`。
+
+```python
+pyvqnet.qnn.pq3.template.RotCircuit(para, qlist)
+```
+
+**示例**:
 ```python
 from pyvqnet.qnn.pq3.template import RotCircuit
 from pyvqnet import tensor
 
+m_qlist = 1
 param = tensor.QTensor([3, 4, 5])
-c = RotCircuit(param, 1)
+c = RotCircuit(param, m_qlist)
 ```
 
 ### HardwareEfficientAnsatz
 硬件高效 ansatz。
 
+```python
+pyvqnet.qnn.pq3.ansatz.HardwareEfficientAnsatz(
+    qubits,
+    single_rot_gate_list,
+    entangle_gate='CNOT',
+    entangle_rules='linear',
+    depth=1
+)
+```
+
+**示例**:
 ```python
 from pyvqnet.qnn.pq3.ansatz import HardwareEfficientAnsatz
 from pyvqnet.tensor import tensor
@@ -877,9 +1037,8 @@ cir = hea.create_ansatz(params)
 5. **AmplitudeEmbedding 未归一化**: 输入特征必须手动归一化 (`x / np.linalg.norm(x)`), L2 norm 必须为 1; 特征数必须 ≤ 2^n_qubits
 6. **HardwareEfficientAnsatz 参数遗漏**: 必须调用 `get_para_num()` 获取参数总数, 再用 `create_ansatz(params)` 传入参数张量; 不能调用无参的 `create_ansatz()`
 7. **VQCQCloudLayer QMachine 配置**: QMachine 必须设置 `save_ir=True`；VQC 模块不支持 MeasureAll，改用 `pauli_str_dict`
-8. **NoiseQuantumLayer machine_type**: 目前仅支持 `"noise"` 类型；函数签名须包含 `(input, param, qubits, cbits, m_machine)` 五个参数
-9. **QuantumLayerV3 CRX/CRY/CRZ 梯度**: 使用特殊公式计算，参考 https://iopscience.iop.org/article/10.1088/1367-2630/ac2cb3
+8. **QuantumLayerV3 CRX/CRY/CRZ 梯度**: 使用特殊公式计算，参考 https://iopscience.iop.org/article/10.1088/1367-2630/ac2cb3
 
 ---
 
-**Version**: VQNet 2.18.1
+**Version**: VQNet 2.18.2

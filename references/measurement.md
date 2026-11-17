@@ -1,4 +1,4 @@
-# Measurement Functions API Reference (v2.18.1)
+# Measurement Functions API Reference (v2.18.2)
 
 ## expval
 
@@ -15,8 +15,8 @@ For a Hamiltonian `0.7 Z0⊗X1⊗I2 + 0.2 I0⊗Z1⊗I2`, the dictionary looks li
 Supports pyqpanda3 CPU and GPU simulators.
 
 **Parameters:**
-- `machine` - Quantum virtual machine created by pyqpanda (CPUQVM or GPUQVM)
-- `prog` - Quantum program created by pyqpanda
+- `machine` - Quantum virtual machine created by pyqpanda3 (CPUQVM or GPUQVM)
+- `prog` - Quantum program created by pyqpanda3
 - `pauli_str_dict` - Dictionary mapping Pauli strings to coefficients
 - `shots` - `int` - Number of measurement shots, default: 1000
 - `noise_model` - `pyqpanda3.core.NoiseModel` - Noise model to apply, default: None (ideal)
@@ -60,11 +60,11 @@ pyvqnet.qnn.pq3.measure.QuantumMeasure(
 **Description:**
 Performs quantum measurement using Monte Carlo method. Returns measurement outcome counts.
 
-Supports `CPUQVM`, `GPUQVM`, and `QCloud`.
+QuantumMeasure API 现在只支持 pyqpanda3 的 `CPUQVM` 或 `QCloud`。
 
 **Parameters:**
-- `machine` - Quantum VM allocated by pyQPanda (CPUQVM, GPUQVM, or QCloudBackend)
-- `prog` - Quantum program created by pyQPanda
+- `machine` - Quantum VM allocated by pyqpanda3 (CPUQVM or QCloudBackend)
+- `prog` - Quantum program created by pyqpanda3
 - `measure_qubits` - `list[int]` - List of measured qubit indices
 - `shots` - `int` - Number of measurement shots, default: 1000
 - `qcloud_option` - `QCloudOptions` - QCloud configuration, only used with QCloud, default: ""
@@ -107,8 +107,8 @@ Computes probability measurement. For `shots=1` (default), computes the theoreti
 Supports `CPUQVM` and `GPUQVM`.
 
 **Parameters:**
-- `machine` - pyQPanda quantum VM (CPUQVM or GPUQVM)
-- `prog` - Quantum program created by pyQPanda
+- `machine` - pyqpanda3 quantum VM (CPUQVM or GPUQVM)
+- `prog` - Quantum program created by pyqpanda3
 - `measure_qubits` - `list[int]` - List of measured qubit indices
 - `shots` - `int` - Number of measurement shots, default: 1 (theoretical calculation)
 - `noise_model` - `pyqpanda3.core.NoiseModel` - Noise model to apply, default: None (ideal)
@@ -253,7 +253,7 @@ For normalized quantum states: 1/d ≤ γ ≤ 1 where d is the Hilbert space dim
 **Formula:** γ = Tr(ρ²)
 
 **Parameters:**
-- `state` - Full quantum state vector from `pyqpanda` `get_qstate()`
+- `state` - Full quantum state vector from `pyqpanda3` `get_qstate()`
 - `qubits_idx` - `list[int]` - Qubit indices to compute purity for
 - **Returns:** `float` - Purity value
 
