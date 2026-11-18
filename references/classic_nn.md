@@ -113,7 +113,9 @@ pyvqnet.nn.Sequential(*args)
 顺序容器，自动执行前向传播。
 
 ```python
+import numpy as np
 from pyvqnet.nn import Sequential, Linear, ReLU
+from pyvqnet.tensor import QTensor
 
 model = Sequential(
     Linear(4, 8),
@@ -121,7 +123,8 @@ model = Sequential(
     Linear(8, 2)
 )
 
-output = model(input)
+x = QTensor(np.random.randn(3, 4).astype(np.float32))
+output = model(x)
 ```
 
 ---
@@ -180,7 +183,7 @@ import pyvqnet
 
 b, ic, oc = 2, 2, 3
 test_conv = Conv2D(ic, oc, (2, 2), (2, 2), (0, 0))
-x = QTensor(np.arange(1, 17).reshape([b, ic, 4, 1]), requires_grad=True, dtype=pyvqnet.kfloat32)
+x = QTensor(np.arange(1, 65).reshape([b, ic, 4, 4]), requires_grad=True, dtype=pyvqnet.kfloat32)
 y = test_conv.forward(x)
 print(y)
 ```
@@ -300,7 +303,10 @@ pyvqnet.nn.GroupNorm(num_groups, num_channels, epsilon=1e-5, affine=True, dtype=
 分组归一化。
 
 ```python
+import numpy as np
+from pyvqnet.tensor import QTensor, kfloat32
 from pyvqnet.nn import GroupNorm
+
 test_conv = GroupNorm(2, 10)
 x = QTensor(np.arange(0, 60*2*5).reshape([2, 10, 3, 2, 5]), requires_grad=True, dtype=kfloat32)
 y = test_conv.forward(x)
@@ -323,13 +329,17 @@ Root Mean Square Layer Normalization。相比 LayerNorm 不进行均值中心化
 - `eps` - 数值稳定性常数，默认 1e-5
 - `affine` - 是否使用可学习的缩放参数 γ，默认 True
 
+**注意**: 当前 RMSNorm 的 CPU 实现未提供，需在 GPU 上运行；模块与输入必须位于同一设备。
+
 ```python
+import pyvqnet
 import numpy as np
 from pyvqnet.tensor import QTensor, kfloat32
 from pyvqnet.nn import RMSNorm
 
-rms = RMSNorm(4)
-x = QTensor(np.arange(1, 9).reshape([2, 4]), requires_grad=True, dtype=kfloat32)
+rms = RMSNorm(4).toGPU(pyvqnet.DEV_GPU_0)
+x = QTensor(np.arange(1, 9).reshape([2, 4]), requires_grad=True,
+            dtype=kfloat32, device=pyvqnet.DEV_GPU_0)
 y = rms(x)
 print(y)
 ```
@@ -339,6 +349,8 @@ print(y)
 ## Pooling 池化层
 
 > **参数类型**: 所有 pooling 层的 `kernel` / `stride` 必须传 list 或 tuple（如 `[2, 2]`、`(2, 2)`），**不能传裸 int**（如 `2`），否则会触发 `max_pool2d(): incompatible function arguments`。
+>
+> **padding**: 池化的 padding 需为对称值；部分输入形状下 `"same"` 会触发 `Not Support asymmetric padding`，此时改用 `"valid"` 或显式对称 padding。
 
 ### MaxPool2D
 
@@ -365,6 +377,7 @@ pyvqnet.nn.AdaptiveAvgPool2d(out_size, name="")
 自适应平均池化，输出尺寸固定为 `out_size`，不依赖输入尺寸。
 
 ```python
+import pyvqnet
 from pyvqnet.nn import AdaptiveAvgPool2d
 from pyvqnet.tensor import QTensor
 import numpy as np
@@ -388,7 +401,7 @@ from pyvqnet.nn import MaxPool1D
 from pyvqnet.tensor import QTensor
 import numpy as np
 
-test_mp = MaxPool1D([3], [2], "same")
+test_mp = MaxPool1D([3], [2], "valid")  # "same" 在部分形状下会触发 asymmetric padding 错误
 x = QTensor(np.array([0, 1, 0, 4, 5, 2, 3, 2, 1, 3], dtype=np.float32).reshape([1, 1, 10]), requires_grad=True)
 y = test_mp(x)
 print(y)
@@ -543,19 +556,20 @@ pyvqnet.nn.RoPE(head_dim, max_seq_len=2048, base=10000.0, rope_type="standard", 
 - k: `(batch, num_kv_heads, seq_len, head_dim)`
 - 输出: (out_q, out_k)，与输入形状相同
 
+**注意**: RoPE 的 CPU 实现未提供，必须使用 GPU（CUDA）后端运行。
+
 ```python
+import pyvqnet
 import numpy as np
-from pyvqnet.tensor import QTensor, kfloat32
+from pyvqnet.tensor import QTensor
 from pyvqnet.nn import RoPE
 
 rope = RoPE(64, max_seq_len=128)
-q = QTensor(np.random.randn(2, 8, 128, 64).astype(np.float32))
-k = QTensor(np.random.randn(2, 4, 128, 64).astype(np.float32))
+q = QTensor(np.random.randn(2, 8, 128, 64).astype(np.float32), device=pyvqnet.DEV_GPU_0)
+k = QTensor(np.random.randn(2, 4, 128, 64).astype(np.float32), device=pyvqnet.DEV_GPU_0)
 out_q, out_k = rope(q, k)
 print(out_q.shape, out_k.shape)
 ```
-
-**注意**: RoPE 通常需要 GPU（CUDA）后端运行。
 
 ---
 
@@ -1070,6 +1084,8 @@ model = swin_b()
 
 LLM 推理中的 token 采样函数，位于 `pyvqnet.nn.functional`。**需要 GPU（CUDA）后端**。
 
+> 设备请使用 `pyvqnet.DEV_GPU_0`；字符串 `"gpu:0"` 不会被识别为 GPU 设备。
+
 ### top_k_top_p_sampling_from_logits
 
 ```python
@@ -1092,7 +1108,7 @@ from pyvqnet.tensor import QTensor
 from pyvqnet.nn.functional import top_k_top_p_sampling_from_logits
 
 pyvqnet.backends.set_backend("pyvqnet-ad")
-logits = QTensor([[0.1, 0.2, 0.5, 0.1, 0.1]], device="gpu:0")
+logits = QTensor([[0.1, 0.2, 0.5, 0.1, 0.1]], device=pyvqnet.DEV_GPU_0)
 tokens, valid = top_k_top_p_sampling_from_logits(logits, temperature=0.8, top_k=3, top_p=0.9)
 print(tokens.to_numpy())  # e.g. [2]
 ```
@@ -1135,7 +1151,7 @@ from pyvqnet.tensor import QTensor
 from pyvqnet.nn.functional import min_p_sampling_from_probs
 
 pyvqnet.backends.set_backend("pyvqnet-ad")
-probs = QTensor([[0.1, 0.3, 0.5, 0.1]], device="gpu:0")
+probs = QTensor([[0.1, 0.3, 0.5, 0.1]], device=pyvqnet.DEV_GPU_0)
 tokens, valid = min_p_sampling_from_probs(probs, min_p=0.1)
 print(tokens.to_numpy())  # e.g. [2]
 ```
@@ -1205,6 +1221,8 @@ pyvqnet.nn.Identity(name="")
 
 ```python
 from pyvqnet.nn import Identity
+from pyvqnet.tensor import QTensor
+
 layer = Identity()
 x = QTensor([1.0, 2.0, 3.0])
 y = layer(x)  # 返回 x 本身

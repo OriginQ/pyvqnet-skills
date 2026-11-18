@@ -213,6 +213,7 @@ class M(Module):
 
 ```python
 from pyvqnet import DEV_CPU, DEV_GPU_0, DEV_GPU_1
+from pyvqnet.tensor import ones
 
 # CPU
 a = ones([4, 5], device=DEV_CPU)
@@ -252,6 +253,7 @@ from pyvqnet.qnn.pq3 import ProbsMeasure, QuantumLayer
 from pyvqnet.nn import Module, CategoricalCrossEntropy
 from pyvqnet.optim import Adam
 from pyvqnet.tensor import QTensor
+from pyvqnet import kint64
 import numpy as np
 
 def qdrl_circuit(input, weights):

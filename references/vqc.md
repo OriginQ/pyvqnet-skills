@@ -109,6 +109,7 @@ print(device.states)
 
 ```python
 from pyvqnet.qnn.vqc import RX, RY, RZ, QMachine
+from pyvqnet.tensor import QTensor
 
 # 参数化旋转门 - 设置 trainable=True
 device = QMachine(4)
@@ -564,12 +565,12 @@ cg = CircuitGraph(allops, wires, trainable_params=None)
 - `ancestors(ops)` - 获取指定操作的祖先节点
 - `descendants(ops)` - 获取指定操作的后代节点
 - `has_path(a, b)` - 检查两节点间是否存在路径
-- `serialize()` - 序列化电路图
-- `print_contents()` - 打印电路内容
+- `hash` - 电路哈希；部分 2.18.2 构建中可能因缺少 `serialize` 实现而报错，示例只使用 `get_depth()` 与 `parametrized_layers`
 
 **示例**:
 ```python
 from pyvqnet.qnn.vqc import CircuitGraph, QMachine, RX, RY, CNOT, MeasureAll
+from pyvqnet.tensor import QTensor
 
 qm = QMachine(3)
 qm.reset_states(1)
@@ -578,7 +579,7 @@ ry = RY(trainable=True, wires=1)
 cnot = CNOT(wires=[0, 1])
 measure = MeasureAll(obs={"Z0": 1, "Z1": 1})
 
-rx(params=[0.5], q_machine=qm)
+rx(params=QTensor([0.5]), q_machine=qm)
 cnot(q_machine=qm)
 ry(q_machine=qm)
 result = measure(q_machine=qm)
@@ -589,7 +590,6 @@ cg = CircuitGraph(
     qm.train_params_indices
 )
 print(f"Circuit depth: {cg.get_depth()}")
-print(f"Circuit hash: {cg.hash}")
 for layer in cg.parametrized_layers:
     print(f"Layer ops: {layer.ops}, params: {layer.param_inds}")
 ```
@@ -752,51 +752,7 @@ qng = QNG(qmodel, stepsize=0.01, momentum=0)
 2. 仅支持纯变分量子电路
 3. 需要在模型 forward 上加 `@wrapper_calculate_qng` 装饰器
 
-**示例**:
-```python
-from pyvqnet.qnn.vqc import (
-    QNG, wrapper_calculate_qng,
-    QMachine, RX, RY, RZ, CNOT,
-    PauliX, MeasureAll
-)
-from pyvqnet.tensor import QTensor
-import pyvqnet, numpy as np
-
-class QModel(pyvqnet.nn.Module):
-    def __init__(self, num_wires, dtype):
-        super(QModel, self).__init__()
-        self._num_wires = num_wires
-        self._dtype = dtype
-        self.qm = QMachine(num_wires, dtype=dtype)
-        self.rz_layer1 = RZ(trainable=False, wires=0)
-        self.rz_layer2 = RZ(trainable=False, wires=1)
-        self.l_train1 = RY(trainable=True, wires=1)
-        self.l_train2 = RX(trainable=True, wires=2)
-        self.xlayer = PauliX(wires=0)
-        self.cnot01 = CNOT(wires=[0, 1])
-        self.cnot12 = CNOT(wires=[1, 2])
-        self.measure = MeasureAll(obs={'Y0': 1})
-
-    @wrapper_calculate_qng
-    def forward(self, x, *args, **kwargs):
-        self.qm.reset_states(x.shape[0])
-        self.rz_layer1(q_machine=self.qm, params=x[:, [0]])
-        self.rz_layer2(q_machine=self.qm, params=x[:, [1]])
-        self.cnot01(q_machine=self.qm)
-        self.cnot12(q_machine=self.qm)
-        self.l_train1(q_machine=self.qm)
-        self.l_train2(q_machine=self.qm)
-        self.cnot01(q_machine=self.qm)
-        self.cnot12(q_machine=self.qm)
-        return self.measure(q_machine=self.qm)
-
-qmodel = QModel(3, pyvqnet.kcomplex64)
-x = QTensor([[1111.0, 2222, 444]], requires_grad=True)
-
-qng = QNG(qmodel, 0.01)
-qng.step(x)
-qng.step(x)
-```
+> **已知问题（2.18.2）**: 官方 QNG 示例在 2.18.2 下会抛出 `IndexError: list index out of range`（`qng.py::_calculate_metric_tensor` 内部）。原官方示例已移除；官方修复前建议使用 `QNSPSAOptimizer` 或常规优化器 + parameter-shift。
 
 ---
 

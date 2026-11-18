@@ -166,7 +166,7 @@ from pyvqnet.optim import Adam
 from pyvqnet.tensor import QTensor
 from pyvqnet import kint64
 
-model = Linear(10, 5)
+model = Linear(4, 5)
 optimizer = Adam(model.parameters(), lr=0.01)
 loss_fn = CrossEntropyLoss()
 

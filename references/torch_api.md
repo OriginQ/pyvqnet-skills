@@ -147,6 +147,8 @@ Sequential container for Torch backend modules. Accepts modules as positional ar
 
 **Example:**
 ```python
+import pyvqnet
+pyvqnet.backends.set_backend("torch")
 from pyvqnet.nn.torch import TorchSequential, Conv2D, ReLu
 
 model = TorchSequential(
@@ -485,6 +487,8 @@ output, hidden_state = rnn(x, init_states)
 
 **Example:**
 ```python
+import pyvqnet
+pyvqnet.backends.set_backend("torch")
 from pyvqnet.nn.torch import GRU
 from pyvqnet.tensor import tensor
 
@@ -1161,6 +1165,8 @@ pyvqnet.qnn.vqc.sv.torch.vqc_crot_circuit(para, control_wire, rot_wire, q_machin
 
 ## torch 后端张量网络接口 (`pyvqnet.qnn.vqc.tn.torch`)
 
+> TN 后端依赖 jax。显存有限时可设置 `XLA_PYTHON_CLIENT_PREALLOCATE=false`，避免 JAX 预分配过多 GPU 显存导致 OOM。
+
 张量网络（Tensor Network）通过将复杂的张量分解为多个低维张量的网络，显著降低了计算复杂度。矩阵乘积态（Matrix Product State, MPS）是张量网络的一种特殊形式，MPS 将量子态表示为一系列矩阵的乘积，从而有效减少参数数量，降低了计算复杂度。
 
 `pyvqnet.qnn.vqc.tn.torch` 基于 `torch` 后端，对张量网络构建量子线路的功能提供支持，包括构建量子线路基类、量子逻辑门、量子线路以及测量方法，并通过自动微分模拟代替参数移位法计算参数梯度。以 MPS 方式构建量子线路可支持大比特（100 及以上）量子线路模拟。
@@ -1764,6 +1770,7 @@ Custom initializer functions compatible with torch backend for parameter initial
 ```python
 import pyvqnet
 import torch
+import numpy as np
 from pyvqnet.tensor import QTensor
 from pyvqnet.nn.torch import TorchModule, Linear, ReLu, CrossEntropyLoss
 from pyvqnet import kint64
@@ -1787,6 +1794,9 @@ class Classifier(TorchModule):
 model = Classifier()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = CrossEntropyLoss()
+
+x = QTensor(np.random.randn(2, 784).astype(np.float32))
+y = QTensor([0, 1], dtype=kint64)
 
 # Training loop — pure PyTorch
 # Note: torch.optim.Adam is a PyTorch optimizer, so it uses step() (not _step())

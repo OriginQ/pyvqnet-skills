@@ -570,6 +570,8 @@ print(f"after rank {get_rank()}: {complex_data}")
 
 在多进程中，使用 `split_data` 根据进程数对数据进行切分，返回相应进程上的数据。
 
+> 以下示例需通过 `vqnetrun` 启动；直接 `python` 运行会因 `RANK` 未设置而报错。
+
 ```python
 pyvqnet.distributed.datasplit.split_data(x_train, y_train, shuffle=False)
 ```
@@ -597,6 +599,8 @@ x_train, y_train = split_data(x_train, y_train)
 ```
 
 ### get_local_rank / get_rank / get_size
+
+> 以下示例需通过 `vqnetrun` 启动；直接 `python` 运行会因 `RANK` 未设置而报错。
 
 ```python
 from pyvqnet.distributed import get_local_rank, get_rank, get_size

@@ -447,7 +447,7 @@ print(tensor.divide(t1, t2))# [0.25, 0.4, 0.5]
 ```python
 from pyvqnet.tensor import tensor, QTensor
 
-t = QTensor([[1, 2, 3], [4, 5, 6]])
+t = QTensor([[1., 2., 3.], [4., 5., 6.]])  # mean 仅支持浮点/复数
 print(tensor.sums(t))       # [21.]
 print(tensor.mean(t, 1))    # [2., 5.]
 ```

@@ -139,6 +139,7 @@ loss_fn(y_pred, y_true)  # PyTorch: 预测在前
 
 ```python
 from pyvqnet import kint64
+from pyvqnet.tensor import QTensor
 labels = QTensor([0, 1, 2], dtype=kint64)
 ```
 
