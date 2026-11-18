@@ -261,7 +261,7 @@ class HybridModel(Module):
         self.cnn = Sequential(
             Conv2D(1, 16, 3),
             ReLU(),
-            MaxPool2D(2, 2),          # 参数名是 kernel，不是 kernel_shape
+            MaxPool2D([2, 2], [2, 2]),  # kernel/stride 需传 list/tuple，不能传裸 int
             Conv2D(16, 32, 3),
             ReLU(),
             AdaptiveAvgPool2d((1, 1)),

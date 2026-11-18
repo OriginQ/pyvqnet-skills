@@ -642,6 +642,8 @@ print(pyvqnet.backends.get_backend())  # "torch"
 14. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
 15. **`model.parameters()` 返回 list**: 不是迭代器，不能写 `next(model.parameters())`；用 `model.parameters()[0]` 或直接遍历
 16. **整数张量不能求梯度**: `QTensor([1, 2, 3], requires_grad=True)` 会因 dtype 为整型而报错；需要梯度时用浮点数据或 `dtype=kfloat32`
+17. **numpy 默认 float64**: `np.random.randn` / `np.arange` 生成的数组可能为 float64；送入 VQNet 前用 `.astype(np.float32)` 或 `dtype=kfloat32`，否则会与 float32 参数不匹配
+18. **Pooling 参数类型**: `MaxPool2D` / `AvgPool2D` / `MaxPool1D` / `AvgPool1D` 的 `kernel`/`stride` 必须传 list/tuple（如 `[2, 2]`），不能传裸 int
 
 ### GPU 训练要点
 

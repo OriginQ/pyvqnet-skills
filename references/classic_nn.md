@@ -1,6 +1,8 @@
 # Classical Neural Network API Reference
 
 > **重要**: 所有示例代码均来自官方文档，可直接运行。
+>
+> **dtype 注意**: numpy 的 `np.random.randn` / `np.arange` 默认可能得到 float64 或整型；VQNet 参数默认 float32。构造 `QTensor` 输入时请使用 `.astype(np.float32)` 或 `dtype=pyvqnet.kfloat32`。整型张量不能设置 `requires_grad=True`。
 
 ---
 
@@ -219,7 +221,7 @@ from pyvqnet.utils import initializer
 import numpy as np
 
 test_conv = ConvT2D(3, 2, [3, 3], [1, 1], "valid", True, initializer.ones, initializer.ones)
-x = QTensor(np.arange(1, 76).reshape([1, 3, 5, 5]), requires_grad=True)
+x = QTensor(np.arange(1, 76).reshape([1, 3, 5, 5]).astype(np.float32), requires_grad=True)
 y = test_conv.forward(x)
 print(y)
 ```
@@ -336,6 +338,8 @@ print(y)
 
 ## Pooling 池化层
 
+> **参数类型**: 所有 pooling 层的 `kernel` / `stride` 必须传 list 或 tuple（如 `[2, 2]`、`(2, 2)`），**不能传裸 int**（如 `2`），否则会触发 `max_pool2d(): incompatible function arguments`。
+
 ### MaxPool2D
 
 ```python
@@ -385,7 +389,7 @@ from pyvqnet.tensor import QTensor
 import numpy as np
 
 test_mp = MaxPool1D([3], [2], "same")
-x = QTensor(np.array([0, 1, 0, 4, 5, 2, 3, 2, 1, 3], dtype=float).reshape([1, 1, 10]), requires_grad=True)
+x = QTensor(np.array([0, 1, 0, 4, 5, 2, 3, 2, 1, 3], dtype=np.float32).reshape([1, 1, 10]), requires_grad=True)
 y = test_mp(x)
 print(y)
 ```
@@ -433,7 +437,7 @@ import numpy as np
 
 droplayer = Dropout(0.5)
 droplayer.train()
-x = QTensor(np.arange(-8, 8).reshape([2, 2, 2, 2]), requires_grad=True)
+x = QTensor(np.arange(-8, 8).reshape([2, 2, 2, 2]).astype(np.float32), requires_grad=True)
 y = droplayer(x)
 print(y)
 ```

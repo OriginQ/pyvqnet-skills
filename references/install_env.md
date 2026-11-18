@@ -286,7 +286,7 @@ optimizer = Adam(model.parameters(), lr=0.6)
 loss_fn = CategoricalCrossEntropy()
 
 # 训练循环
-x = QTensor(np.random.randn(32, 3))
+x = QTensor(np.random.randn(32, 3).astype(np.float32))  # numpy 默认 float64，需转 float32
 y = QTensor(np.random.randint(0, 2, (32, 2)), dtype=kint64)  # 标签必须用 kint64，不要用 np.int64
 
 output = model(x)

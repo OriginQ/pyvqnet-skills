@@ -156,6 +156,8 @@ labels = QTensor([0, 1, 2], dtype=kint64)
 8. **VQCLayer / VQCQCloudLayer**: `QMachine` 必须设置 `save_ir=True`；`VQCLayer` 的 `pauli_str_dict`（期望值）与 `measure_qubits`（概率）互斥，`VQCQCloudLayer` 仅支持 `pauli_str_dict` 且不能使用 `MeasureAll`；`submit_kwargs["backend"]` 使用 `vqnet_native`（2.18.2 起，不再是 `vqc_autograd`）
 9. **已移除的 `has_params`**: 2.18.2 移除了 VQC 门类的 `has_params`，可训练门使用 `trainable=True`（第一位置参数），如 `RX(trainable=True, wires=0)`
 10. **ConvT2D padding**: 不支持 `"same"`，仅支持 `"valid"` 或整数元组（如 `(1, 1)`）
+11. **numpy dtype**: `np.random.randn` 默认 float64，送入模型前需 `.astype(np.float32)`；整型数组不能 `requires_grad=True`
+12. **Pooling 参数**: `MaxPool2D`/`AvgPool2D` 的 `kernel`/`stride` 需传 list/tuple（如 `[2, 2]`），不能传裸 int
 
 ---
 
