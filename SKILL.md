@@ -236,9 +236,10 @@ def circuit(input, param):
     for i in range(4):
         cir << pq.H(i) << pq.RZ(i, input[i])
 
-    # 变分部分
-    cir << pq.CNOT(0, 1) << pq.RZ(1, param[0])
-    cir << pq.CNOT(1, 2) << pq.RZ(2, param[1])
+    # 变分部分：可训练门用 RY/RX 改变布居数；
+    # 纯 RZ 相位门 + 计算基概率测量可能得到零梯度。
+    cir << pq.CNOT(0, 1) << pq.CNOT(1, 2) << pq.CNOT(2, 3)
+    cir << pq.RY(0, param[0]) << pq.RY(2, param[1]) << pq.RY(3, param[2])
 
     prog = pq.QProg()
     prog << cir
@@ -249,7 +250,10 @@ layer = QuantumLayer(circuit, 3)
 
 x = QTensor([[0.1, 0.2, 0.3, 0.4]])
 y = layer(x)
-y.backward()
+# ProbsMeasure 输出概率向量：概率和恒为 1，直接 backward()/sum() 的参数梯度为 0。
+# 使用非恒定标量损失（实际训练可用 MSELoss(target, y)）后再 backward。
+loss = (y * y).sum()
+loss.backward()
 print(layer.m_para.grad)
 ```
 
@@ -302,7 +306,10 @@ model = QModel()
 x = tensor.arange(1.0, 13).reshape([3, 4])
 x.requires_grad = True
 y = model(x)
-y.backward()
+# Probability 输出概率向量，概率和为常数；需用非恒定标量损失再 backward。
+loss = (y * y).sum()  # 实际训练可用 MSELoss(target, y)
+loss.backward()
+print("loss:", loss.item())
 ```
 
 ---
